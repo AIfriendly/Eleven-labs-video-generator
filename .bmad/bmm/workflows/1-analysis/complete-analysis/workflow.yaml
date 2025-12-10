@@ -1,0 +1,412 @@
+# Complete Analysis - Autonomous Phase 1 Workflow
+name: "complete-analysis"
+description: "Autonomous Phase 1 analysis workflow that orchestrates brainstorming, research, domain research, and product brief generation from a single app idea"
+author: "BMad"
+version: "2.0.0"  # Enhanced with orchestration, parallel execution, and quality gates
+
+# Enhancement mode configuration
+enhancement_mode: "{config_source}:ENHANCEMENT_MODE"  # Set to 'standard' or 'enhanced'
+# To enable: Set ENHANCEMENT_MODE=enhanced in .bmad/bmm/config.yaml
+# Standard mode: Sequential execution with checkpoints
+# Enhanced mode: Parallel research + quality gates + auto-validation
+
+# Critical variables from config
+config_source: "{project-root}/.bmad/bmm/config.yaml"
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Sub-workflow references - these will be invoked in sequence or parallel
+brainstorm_workflow: "{project-root}/.bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml"
+research_workflow: "{project-root}/.bmad/bmm/workflows/1-analysis/research/workflow.yaml"
+domain_research_workflow: "{project-root}/.bmad/bmm/workflows/1-analysis/domain-research/workflow.yaml"
+product_brief_workflow: "{project-root}/.bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml"
+
+# Module path and component files
+installed_path: "{project-root}/.bmad/bmm/workflows/1-analysis/complete-analysis"
+template: false  # This is an action workflow - no template
+instructions: "{installed_path}/instructions.md"
+validation: "{installed_path}/checklist.md"
+
+# Output configuration - completion report
+default_output_file: "{output_folder}/complete-analysis-report.md"
+
+# Invocation control
+standalone: true
+
+# Variables and configuration
+variables:
+  skip_checkpoints: false  # If true, skip user approval between phases (auto-continue)
+  enable_parallel_research: "{{enhancement_mode == 'enhanced'}}"  # Run research + domain research in parallel
+  enable_quality_gates: "{{enhancement_mode == 'enhanced'}}"  # Validate outputs against quality criteria
+  enable_auto_validation: "{{enhancement_mode == 'enhanced'}}"  # Automatically validate outputs
+  max_retry_per_phase: 2  # Maximum retries if validation fails
+
+# Orchestration steps (Enhanced Mode)
+orchestration:
+  - name: "Step 0: Introduction and Capture App Idea"
+    agent: "analyst"
+    description: "Welcome user and capture the app idea for analysis"
+    inputs:
+      - user_input: "App idea description"
+    outputs:
+      - app_idea: "Stored for all subsequent workflows"
+    on_failure: "abort"
+
+  - name: "Step 1: Brainstorm Project"
+    agent: "analyst"
+    workflow: "{brainstorm_workflow}"
+    description: "Creative brainstorming session to explore app concept from multiple angles"
+    inputs:
+      - app_idea: "From Step 0"
+    outputs:
+      - brainstorm_notes: "Document with creative ideas and directions"
+      - ideas_count: "Number of ideas generated"
+      - perspectives_count: "Number of perspectives explored"
+    validation:
+      min_ideas: 10
+      min_perspectives: 3
+      min_feature_concepts: 5
+    quality_gate:
+      enabled: "{{enable_quality_gates}}"
+      criteria:
+        - has_multiple_perspectives: "At least 3 different viewpoints"
+        - has_feature_ideas: "At least 5 feature concepts"
+        - has_user_value: "Clear user value proposition identified"
+      on_failure: "{{enhancement_mode == 'enhanced' ? 'auto_retry' : 'prompt_user'}}"
+    checkpoint:
+      enabled: "{{!skip_checkpoints}}"
+      options: ["continue", "re-run", "abort"]
+    on_failure: "retry_once"
+    max_retries: "{max_retry_per_phase}"
+
+  - name: "Step 2: Research Phase (Parallel in Enhanced Mode)"
+    description: "Market and domain research executed in parallel for faster completion"
+
+    # Standard mode: Sequential execution
+    standard_mode:
+      condition: "{{enhancement_mode != 'enhanced'}}"
+      sequential_execution:
+        - name: "Market Research"
+          agent: "analyst"
+          workflow: "{research_workflow}"
+          inputs:
+            - brainstorm_output: "From Step 1"
+          outputs:
+            - research_findings: "Market analysis document"
+          checkpoint:
+            enabled: "{{!skip_checkpoints}}"
+            options: ["continue", "re-run", "abort"]
+
+        - name: "Domain Research"
+          agent: "analyst"
+          workflow: "{domain_research_workflow}"
+          inputs:
+            - brainstorm_output: "From Step 1"
+            - research_findings: "From Market Research"
+          outputs:
+            - domain_analysis: "Domain-specific requirements"
+          checkpoint:
+            enabled: "{{!skip_checkpoints}}"
+            options: ["continue", "re-run", "abort"]
+
+    # Enhanced mode: Parallel execution
+    parallel_research:
+      enabled: "{{enable_parallel_research}}"
+      condition: "{{enhancement_mode == 'enhanced'}}"
+
+      workflows:
+        - name: "Market Research"
+          agent: "analyst"
+          workflow: "{research_workflow}"
+          inputs:
+            - brainstorm_output: "From Step 1"
+          outputs:
+            - research_findings: "Market analysis document"
+          validation:
+            min_competitors: 5
+            min_sources: 10
+            min_trends: 3
+          quality_gate:
+            enabled: "{{enable_quality_gates}}"
+            criteria:
+              - has_competitive_analysis: "At least 5 competitors analyzed"
+              - has_market_size: "Market size estimation present"
+              - has_trends: "At least 3 relevant trends identified"
+          timeout_minutes: 30
+
+        - name: "Domain Research"
+          agent: "analyst"
+          workflow: "{domain_research_workflow}"
+          inputs:
+            - brainstorm_output: "From Step 1"
+          outputs:
+            - domain_analysis: "Domain-specific requirements"
+          validation:
+            min_regulations: 1  # At least identify if regulations apply
+            min_patterns: 3
+            min_constraints: 2
+          quality_gate:
+            enabled: "{{enable_quality_gates}}"
+            criteria:
+              - has_domain_patterns: "Industry patterns identified"
+              - has_regulatory_check: "Regulatory requirements assessed"
+              - has_technical_constraints: "Technical constraints documented"
+          timeout_minutes: 30
+
+      # Parallel execution settings
+      orchestration:
+        run_in_parallel: true
+        wait_for_all: true  # Wait for both to complete before proceeding
+        fail_fast: false  # Continue even if one fails
+        combine_outputs: true
+
+      # Single checkpoint after both complete
+      checkpoint:
+        enabled: "{{!skip_checkpoints}}"
+        show_both_summaries: true
+        options:
+          - continue: "Proceed to product brief"
+          - re-run_market: "Re-run market research only"
+          - re-run_domain: "Re-run domain research only"
+          - re-run_both: "Re-run both research workflows"
+          - abort: "Exit workflow"
+
+  - name: "Step 3: Product Brief Generation"
+    agent: "analyst"  # Could also use PM agent
+    workflow: "{product_brief_workflow}"
+    description: "Synthesize all analysis into comprehensive product brief"
+    inputs:
+      - app_idea: "From Step 0"
+      - brainstorm_notes: "From Step 1"
+      - research_findings: "From Step 2"
+      - domain_analysis: "From Step 2"
+    outputs:
+      - product_brief: "Comprehensive product brief document"
+    validation:
+      has_vision: true
+      has_target_audience: true
+      has_market_positioning: true
+      has_feature_concepts: true
+      has_success_metrics: true
+      has_constraints: true
+      has_risks: true
+    quality_gate:
+      enabled: "{{enable_quality_gates}}"
+      criteria:
+        - vision_clarity: "Clear product vision statement"
+        - target_audience_defined: "Specific target audience identified"
+        - value_proposition: "Unique value proposition articulated"
+        - success_metrics: "At least 3 measurable success metrics"
+        - constraints_documented: "Technical and business constraints listed"
+        - integration_quality: "Incorporates insights from all previous phases"
+      auto_validation:
+        enabled: "{{enable_auto_validation}}"
+        checks:
+          - references_brainstorm: "Brief mentions brainstorming insights"
+          - references_research: "Brief uses market research data"
+          - references_domain: "Brief accounts for domain requirements"
+      on_failure: "{{enhancement_mode == 'enhanced' ? 'auto_retry_with_feedback' : 'prompt_user'}}"
+    checkpoint:
+      enabled: "{{!skip_checkpoints}}"
+      options: ["continue", "re-run", "abort"]
+    on_failure: "retry_once"
+    max_retries: "{max_retry_per_phase}"
+
+  - name: "Step 4: Generate Completion Report"
+    agent: "analyst"
+    description: "Create comprehensive report summarizing all Phase 1 outputs"
+    inputs:
+      - all_outputs: "From Steps 0-3"
+    outputs:
+      - completion_report: "Saved to {default_output_file}"
+      - next_steps: "Recommendations for Phase 2"
+      - quality_summary: "Quality gate results (if enhanced)"
+    on_failure: "continue"  # Report even if some issues
+
+# Quality Gates Configuration
+quality_gates:
+  brainstorming:
+    enabled: "{{enable_quality_gates}}"
+    criteria:
+      min_ideas: 10
+      min_perspectives: 3
+      min_feature_concepts: 5
+      has_user_value: true
+    scoring:
+      ideas_weight: 0.3
+      perspectives_weight: 0.3
+      feature_concepts_weight: 0.2
+      user_value_weight: 0.2
+    pass_threshold: 0.7  # 70% score to pass
+
+  research:
+    enabled: "{{enable_quality_gates}}"
+    criteria:
+      min_competitors: 5
+      min_sources: 10
+      min_trends: 3
+      has_market_size: true
+      has_competitive_analysis: true
+    scoring:
+      completeness: 0.4
+      depth: 0.3
+      relevance: 0.3
+    pass_threshold: 0.7
+
+  domain_research:
+    enabled: "{{enable_quality_gates}}"
+    criteria:
+      has_regulatory_check: true
+      min_patterns: 3
+      min_constraints: 2
+      has_technical_constraints: true
+    scoring:
+      regulatory_compliance: 0.3
+      pattern_identification: 0.3
+      constraint_analysis: 0.4
+    pass_threshold: 0.7
+
+  product_brief:
+    enabled: "{{enable_quality_gates}}"
+    criteria:
+      has_vision: true
+      has_target_audience: true
+      has_market_positioning: true
+      has_feature_concepts: true
+      has_success_metrics: true
+      has_constraints: true
+      has_risks: true
+      integration_quality: true  # Uses all previous phase outputs
+    scoring:
+      completeness: 0.3
+      clarity: 0.2
+      integration: 0.3
+      actionability: 0.2
+    pass_threshold: 0.8  # Higher bar for final deliverable
+
+# Parallel Execution Configuration (Enhanced Mode)
+parallel_execution:
+  enabled: "{{enable_parallel_research}}"
+  max_concurrent: 2  # Run market + domain research in parallel
+  timeout_minutes: 60  # Total timeout for parallel execution
+  retry_failed: true
+  combine_results: true
+
+# Auto-validation Configuration (Enhanced Mode)
+auto_validation:
+  enabled: "{{enable_auto_validation}}"
+
+  validation_rules:
+    brainstorm_output:
+      - check: "word_count"
+        min: 500
+        message: "Brainstorming output seems too brief"
+      - check: "section_presence"
+        required_sections: ["Ideas", "Perspectives", "Features"]
+        message: "Missing required brainstorming sections"
+
+    research_output:
+      - check: "competitor_count"
+        min: 5
+        message: "Insufficient competitor analysis"
+      - check: "source_citations"
+        min: 10
+        message: "Needs more research sources"
+
+    domain_output:
+      - check: "regulatory_section"
+        required: true
+        message: "Regulatory analysis missing"
+      - check: "constraint_list"
+        min: 2
+        message: "Need to identify more constraints"
+
+    product_brief:
+      - check: "all_sections_present"
+        required_sections:
+          - "Vision"
+          - "Target Audience"
+          - "Market Positioning"
+          - "Features"
+          - "Success Metrics"
+          - "Constraints"
+          - "Risks"
+        message: "Product brief missing required sections"
+      - check: "integration_references"
+        references_previous_phases: true
+        message: "Product brief should reference previous analysis"
+      - check: "word_count"
+        min: 2000
+        message: "Product brief seems too brief for comprehensive analysis"
+
+# Performance Tracking (Enhanced Mode)
+performance_tracking:
+  enabled: "{{enhancement_mode == 'enhanced'}}"
+  metrics:
+    - phase_duration: "Track time per phase"
+    - total_duration: "Total workflow time"
+    - retry_count: "Number of retries per phase"
+    - quality_scores: "Quality gate scores"
+  baselines:
+    brainstorm_minutes: 15
+    research_minutes: 20
+    domain_research_minutes: 20
+    product_brief_minutes: 25
+    total_minutes: 80
+
+# Output configuration
+recommended_inputs:
+  - previous_product_brief: "If exists, for context (optional)"
+  - market_research: "Previous research to build upon (optional)"
+
+# Web bundle configuration
+web_bundle:
+  name: "complete-analysis"
+  description: "Autonomous Phase 1 analysis workflow - orchestrates brainstorming, research, domain research, and product brief"
+  author: "BMad"
+  instructions: ".bmad/bmm/workflows/1-analysis/complete-analysis/instructions.md"
+  validation: ".bmad/bmm/workflows/1-analysis/complete-analysis/checklist.md"
+  template: false
+
+  # Reference all sub-workflows that will be invoked
+  brainstorm_workflow: ".bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml"
+  research_workflow: ".bmad/bmm/workflows/1-analysis/research/workflow.yaml"
+  domain_research_workflow: ".bmad/bmm/workflows/1-analysis/domain-research/workflow.yaml"
+  product_brief_workflow: ".bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml"
+
+  web_bundle_files:
+    - ".bmad/bmm/workflows/1-analysis/complete-analysis/instructions.md"
+    - ".bmad/bmm/workflows/1-analysis/complete-analysis/checklist.md"
+
+    # Include all invoked workflows
+    - ".bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml"
+    - ".bmad/bmm/workflows/1-analysis/research/workflow.yaml"
+    - ".bmad/bmm/workflows/1-analysis/domain-research/workflow.yaml"
+    - ".bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml"
+
+  # Signal bundler to recursively include these workflows' web_bundles
+  existing_workflows:
+    - brainstorm_workflow: ".bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml"
+    - research_workflow: ".bmad/bmm/workflows/1-analysis/research/workflow.yaml"
+    - domain_research_workflow: ".bmad/bmm/workflows/1-analysis/domain-research/workflow.yaml"
+    - product_brief_workflow: ".bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml"
+
+# HOW TO USE ENHANCED MODE:
+# 1. Add ENHANCEMENT_MODE: enhanced to .bmad/bmm/config.yaml
+# 2. All enhanced features will automatically activate:
+#    - Parallel execution of market + domain research (50% faster)
+#    - Quality gates validate outputs automatically
+#    - Auto-validation checks document completeness
+#    - Performance tracking for optimization
+#
+# To run in standard mode (original behavior):
+# - Set ENHANCEMENT_MODE: standard or leave unset
+# - Workflow runs with sequential execution and manual checkpoints
+#
+# Benefits of Enhanced Mode:
+# - 50% faster execution through parallel research
+# - Automatic quality validation at each phase
+# - Better output quality through quality gates
+# - Performance tracking for continuous improvement

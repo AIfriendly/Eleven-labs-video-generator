@@ -1,0 +1,117 @@
+# generated: 2025-12-12
+# project: Eleven-labs-AI-Video
+# project_key: ELAV
+# tracking_system: file-system
+# story_location: docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2025-12-12
+project: Eleven-labs-AI-Video
+project_key: ELAV
+tracking_system: file-system
+story_location: docs/sprint-artifacts
+
+development_status:
+  # Epic 1
+  epic-1: in-progress
+  1-1-terminal-installation-and-basic-execution: done
+
+  1-2-api-key-configuration-via-environment-variables: done
+
+  1-3-interactive-setup-and-configuration-file-creation: done
+
+  1-4-terminal-help-system: done
+
+  1-5-api-status-and-usage-checking: done
+
+  1-6-multiple-api-key-profile-management: done
+  epic-1-retrospective: completed
+
+  # Epic 2
+  epic-2: in-progress
+  2-1-default-script-generation-from-prompt: done
+  2-2-default-text-to-speech-generation: backlog
+  2-3-default-image-generation-from-script: backlog
+  2-4-video-compilation-from-assets: backlog
+  2-5-progress-updates-during-video-generation: backlog
+  2-6-apply-subtle-zoom-effects: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3
+  epic-3: backlog
+  3-1-custom-voice-model-selection: backlog
+  3-2-custom-image-generation-model-selection: backlog
+  3-3-interactive-voice-selection-prompts: backlog
+  3-4-interactive-image-model-selection-prompts: backlog
+  3-5-gemini-text-generation-model-selection: backlog
+  3-6-video-duration-selection: backlog
+  3-7-gemini-model-preference-configuration: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4
+  epic-4: backlog
+  4-1-image-duration-timing-control-3-4-seconds: backlog
+  4-2-audio-synced-image-timing: backlog
+  4-3-16-9-aspect-ratio-output: backlog
+  4-4-professional-video-pacing-and-timing: backlog
+  4-5-custom-output-resolution-selection: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5
+  epic-5: backlog
+  5-1-real-time-api-usage-monitoring-during-processing: backlog
+  5-2-model-specific-usage-metrics-for-gemini-api: backlog
+  5-3-live-consumption-data-viewing: backlog
+  5-4-api-quota-information-display: backlog
+  5-5-api-cost-tracking-during-generation: backlog
+  5-6-rate-limit-handling-with-queuing: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6
+  epic-6: backlog
+  6-1-80-success-rate-maintenance: backlog
+  6-2-api-fallback-mechanisms-implementation: backlog
+  6-3-comprehensive-error-handling-implementation: backlog
+  6-4-api-response-caching-for-optimization: backlog
+  6-5-automatic-operation-retry-implementation: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7
+  epic-7: backlog
+  7-1-mp4-video-output-format: backlog
+  7-2-mov-video-output-format: backlog
+  7-3-additional-video-format-support-avi-webm: backlog
+  7-4-multiple-video-generation-in-batch-mode: backlog
+  7-5-non-interactive-mode-for-scripting: backlog
+  7-6-standardized-exit-codes-for-automation: backlog
+  7-7-json-output-mode-for-parsing-results: backlog
+  epic-7-retrospective: optional

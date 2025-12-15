@@ -13,10 +13,14 @@ user_name: 'Revenant'
 date: '2025-12-09'
 ---
 
+
+
 # Product Requirements Document - Eleven-labs-AI-Video
 
 **Author:** Revenant
 **Date:** 2025-12-09
+
+Github Repo: https://github.com/AIfriendly/Eleven-labs-video-generator
 
 ## Executive Summary
 
@@ -98,7 +102,7 @@ User feedback has highlighted key concerns about rate limits, video quality cons
 **Technical Type:** interactive_terminal
 **Domain:** general
 **Complexity:** low
-**Project Context:** Brownfield - extending existing system
+**Project Context:** Greenfield - new application
 
 The project leverages existing AI APIs (Eleven Labs for TTS, image generation and video editing; Google Gemini for script generation) but with a focus on reliable automation and consistency. The local interactive terminal tool will implement robust queuing and caching systems to handle API limitations while providing predictable performance. The MVP will focus on core functionality: accepting a text prompt, allowing pre-generation selection of image models and voiceover options, generating a script via Gemini, creating TTS with Eleven Labs, generating images with Eleven Labs, and compiling the final video using Eleven Labs editing features with 3-4 second image durations for optimal pacing and professional appearance with subtle zoom effects. Success metrics include: <10 second terminal startup time, 80% success rate for complete video generation, average processing time under 5 minutes per video, and user satisfaction score above 4/5. Advanced features like real-time API usage monitoring, batch processing, local caching, workflow integration, image timing optimization, pre-generation customization, professional video editing, and robust error handling will be implemented to ensure a superior user experience with complete transparency on API consumption and costs.
 
@@ -187,7 +191,7 @@ The project leverages existing AI APIs (Eleven Labs for TTS, image generation an
 **Journey 1: Alex Chen - The Developer Automating Content Creation**
 Alex is a backend developer at a fast-growing SaaS startup. Every week, the marketing team asks for personalized video updates for their top 100 enterprise customers, explaining new features and updates. Alex spends 2 hours every Tuesday and Friday manually creating these videos using various tools, leaving him little time for core development tasks. Frustrated by the repetitive nature of this work, he discovers the Eleven Labs AI Video interactive terminal tool while researching automation options.
 
-One evening, Alex decides to try the tool. He starts the interactive terminal session and is guided through the video creation process. The tool first asks for his video prompt, where he enters "New dashboard features update". Then he's presented with interactive menus to select the voice and image model that best aligns with their brand. The tool handles script generation via Gemini, TTS via Eleven Labs, image generation, and video compilation with professional editing. Throughout the process, the real-time API usage monitoring shows him exactly how much this is costing the company, helping him optimize usage patterns.
+One evening, Alex decides to try the tool. He starts the interactive terminal session and is guided through the video generation process. The tool first asks for his video prompt, where he enters "New dashboard features update". Then he's presented with interactive menus to select the voice, image model, and Gemini text generation model that best align with their brand. The tool handles script generation via the selected Gemini model, TTS via Eleven Labs, image generation, and video compilation with professional editing. Throughout the process, the real-time API usage monitoring shows him exactly how much this is costing the company, helping him optimize usage patterns.
 
 The breakthrough comes during the next company all-hands meeting when the CEO raves about how the personalized customer videos have increased engagement and reduced churn. Alex has automated 8 hours of work per week, now spending that time on core product development instead. The 3-4 second image timing and subtle zoom effects make the videos look professionally produced, and his team is amazed at the professional quality with minimal effort.
 
@@ -378,16 +382,18 @@ The implementation will follow interactive terminal design patterns and user exp
 - FR16: Users can initiate video creation through an interactive terminal session
 - FR17: Users can select from available voice options through interactive prompts
 - FR18: Users can select from available image models through interactive prompts
-- FR19: Users can access help documentation within the interactive terminal
-- FR20: Users can configure settings through interactive configuration prompts
-- FR21: Users can check API status and usage through interactive status checks
-- FR22: Users can receive progress updates during video generation
-- FR23: Users can receive clear error messages for failed operations
+- FR19: Users can select from available Gemini text generation models through interactive prompts
+- FR20: Users can access help documentation within the interactive terminal
+- FR21: Users can configure settings through interactive configuration prompts
+- FR22: Users can check API status and usage through interactive status checks
+- FR23: Users can receive progress updates during video generation
 - FR24: Users can select video format, length, and other options through interactive prompts
+- FR24.1: Users can select Gemini text generation model as part of pre-generation configuration
 
 ### Configuration & Personalization
 
 - FR25: Users can configure default settings that persist between sessions
+- FR25.1: Users can configure default Gemini text generation model preferences
 - FR26: The system can store user preferences in a configuration file
 - FR27: Users can manage multiple API key profiles
 - FR28: Users can set environment variables for API keys
@@ -405,7 +411,9 @@ The implementation will follow interactive terminal design patterns and user exp
 
 - FR35: The system can integrate with Eleven Labs API for TTS and image generation
 - FR36: The system can integrate with Google Gemini API for script generation
+- FR36.1: The system can integrate with multiple Gemini text generation models
 - FR37: The system can provide real-time API usage monitoring during processing
+- FR37.1: The system can provide model-specific usage metrics for Google Gemini API
 - FR38: Users can view live consumption data during video generation
 - FR39: Users can see API quota information during processing
 - FR40: The system can track API costs during video generation

@@ -18,7 +18,8 @@ persona:
 critical_actions: []
 
 # Add persistent memories for the agent
-memories: []
+memories:
+  - "CRITICAL RULE: ALWAYS use 'uv' for all Python operations. Never use 'python -m venv' or direct 'pip'. Use 'uv venv', 'uv pip install', and 'uv run'."
 # Example:
 # memories:
 #   - "User prefers detailed technical explanations"

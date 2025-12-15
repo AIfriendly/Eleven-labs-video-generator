@@ -59,7 +59,7 @@ development_status:
   # Epic 2
   epic-2: in-progress
   2-1-default-script-generation-from-prompt: done
-  2-2-default-text-to-speech-generation: backlog
+  2-2-default-text-to-speech-generation: done
   2-3-default-image-generation-from-script: backlog
   2-4-video-compilation-from-assets: backlog
   2-5-progress-updates-during-video-generation: backlog

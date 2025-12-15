@@ -9,7 +9,7 @@ from typing import Protocol, runtime_checkable, Optional, Any, Callable, TYPE_CH
 
 if TYPE_CHECKING:
     from typing import Optional as OptionalType
-    from eleven_video.models.domain import Script
+    from eleven_video.models.domain import Script, Audio
 
 
 @dataclass
@@ -99,6 +99,37 @@ class ScriptGenerator(Protocol):
         Raises:
             ValidationError: If prompt is empty or invalid.
             GeminiAPIError: If API call fails.
+        """
+        ...
+
+
+@runtime_checkable
+class SpeechGenerator(Protocol):
+    """Protocol for text-to-speech generation (Story 2.2).
+    
+    Implementations must convert text to audio using a TTS service
+    (e.g., ElevenLabs).
+    """
+    
+    def generate_speech(
+        self,
+        text: str,
+        voice_id: Optional[str] = None,
+        progress_callback: "Optional[Callable[[str], None]]" = None
+    ) -> "Audio":
+        """Generate audio from text using TTS API.
+        
+        Args:
+            text: The script text to convert to speech.
+            voice_id: Optional voice ID (uses default if not provided).
+            progress_callback: Optional callback for progress updates.
+            
+        Returns:
+            Audio domain model with generated audio bytes.
+            
+        Raises:
+            ValidationError: If text is empty or invalid.
+            ElevenLabsAPIError: If API call fails.
         """
         ...
 

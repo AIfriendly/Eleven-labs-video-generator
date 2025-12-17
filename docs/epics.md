@@ -48,7 +48,9 @@ FR31: The system can output videos in MOV format
 FR32: The system can output videos in additional formats (AVI, WebM)
 FR33: The system can maintain consistent video quality across output formats
 FR34: Users can specify output resolution settings
-FR35: The system can integrate with Eleven Labs API for TTS and image generation
+FR35: The system can integrate with Eleven Labs API for TTS and sound effects
+FR35.1: The system can integrate with Google Gemini Nano Banana (`gemini-2.5-flash-image`) for image generation
+FR35.2: [FUTURE SCOPE] The system can integrate with Eleven Labs API for image generation (when API becomes available)
 FR36: The system can integrate with Google Gemini API for script generation
 FR36.1: The system can integrate with multiple Gemini text generation models
 FR37: The system can provide real-time API usage monitoring during processing
@@ -84,10 +86,10 @@ FR7: Epic 2
 FR8: Epic 2
 FR9: Epic 2
 FR10: Epic 2
-FR11: Epic 4
-FR12: Epic 4
-FR13: Epic 4
-FR14: Epic 4
+FR11: Epic 2 (implemented in Story 2.4)
+FR12: Epic 2 (implemented in Story 2.4)
+FR13: Epic 2 (implemented in Story 2.4)
+FR14: Epic 2 (implemented in Story 2.4)
 FR15: Epic 1
 FR16: Epic 1
 FR17: Epic 3
@@ -105,12 +107,14 @@ FR26: Epic 1
 FR27: Epic 1
 FR28: Epic 1
 FR29: Epic 1
-FR30: Epic 7
-FR31: Epic 7
-FR32: Epic 7
-FR33: Epic 7
-FR34: Epic 4
+FR30: Epic 2 (implemented in Story 2.4)
+FR31: Future Scope
+FR32: Future Scope
+FR33: Future Scope
+FR34: Epic 3
 FR35: Epic 2
+FR35.1: Epic 2
+FR35.2: Future Scope (Post-MVP)
 FR36: Epic 2
 FR36.1: Epic 3
 FR37: Epic 5
@@ -118,48 +122,43 @@ FR37.1: Epic 5
 FR38: Epic 5
 FR39: Epic 5
 FR40: Epic 5
-FR41: Epic 6
-FR42: Epic 5
-FR43: Epic 6
-FR44: Epic 6
-FR45: Epic 6
-FR46: Epic 7
-FR47: Epic 7
-FR48: Epic 7
-FR49: Epic 7
-FR50: Epic 7
-FR51: Epic 7
-FR52: Epic 7
-
-## Epic List
+FR41: NFR (test acceptance criteria)
+FR42: Epic 2 (implemented via tenacity retry)
+FR43: Future Scope
+FR44: Future Scope
+FR45: Epic 2 (implemented via tenacity retry)
+FR46: Future Scope
+FR47: Future Scope
+FR48: Future Scope
+FR49: Future Scope
+FR50: Epic 1
+FR51: Epic 1
+FR52: Future Scope
 
 ### Epic 1: Interactive Terminal Setup and Configuration
 Users can install the tool, configure API keys, and set up their environment to generate videos locally.
-**FRs covered:** FR15, FR16, FR20, FR21, FR22, FR25, FR26, FR27, FR28, FR29
+**FRs covered:** FR15, FR16, FR20, FR21, FR22, FR25, FR26, FR27, FR28, FR29, FR50, FR51
 
 ### Epic 2: Core Video Generation Pipeline
-Users can provide a text prompt and generate a complete video with script, voiceover, images, and compilation.
-**FRs covered:** FR1, FR5, FR6, FR7, FR8, FR9, FR10, FR23, FR35, FR36
+Users can provide a text prompt and generate a complete video with script, voiceover, images, and compilation. **Includes video timing, aspect ratio, and professional output (absorbed from Epic 4).**
+**FRs covered:** FR1, FR5, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR23, FR30, FR35, FR35.1, FR36, FR42, FR45
 
 ### Epic 3: Pre-generation Customization
 Users can select specific voice models, image generation models, Gemini text generation models, and video duration before starting video generation.
-**FRs covered:** FR2, FR3, FR4, FR17, FR18, FR19, FR24, FR24.1, FR25.1, FR36.1
+**FRs covered:** FR2, FR3, FR4, FR17, FR18, FR19, FR24, FR24.1, FR25.1, FR34, FR36.1
 
-### Epic 4: Video Processing and Timing Control
-Users can control video-specific parameters like image duration timing and aspect ratio for professional output.
-**FRs covered:** FR11, FR12, FR13, FR14, FR34
+### ~~Epic 4: Video Processing and Timing Control~~ (DISSOLVED)
+> **Note:** Epic 4 has been merged into Epic 2. Stories 4.1-4.4 were already implemented in Story 2.4. Story 4.5 (custom resolution) moved to Epic 3.
 
-### Epic 5: Advanced API Monitoring and Resilience
-Users can monitor API usage, costs, and quotas in real-time during video generation while the system handles rate limits gracefully.
-**FRs covered:** FR37, FR37.1, FR38, FR39, FR40, FR42
+### Epic 5: Advanced API Monitoring
+Users can monitor API usage, costs, and quotas in real-time during video generation.
+**FRs covered:** FR37, FR37.1, FR38, FR39, FR40
 
-### Epic 6: Quality and Reliability Features
-System ensures reliable video generation with fallback mechanisms, error handling, and caching to achieve 80% success rate.
-**FRs covered:** FR41, FR43, FR44, FR45
+### ~~Epic 6: Quality and Reliability Features~~ (DISSOLVED)
+> **Note:** Epic 6 has been dissolved. FR41 (80% success rate) is a test metric, not an implementable story. FR42/FR45 (retry) already implemented via tenacity decorators in adapters. FR43/FR44 (fallback/caching) deferred to Future Scope.
 
-### Epic 7: Advanced Output and Batch Processing
-Users can generate multiple videos in batch mode and export in various formats with non-interactive scripting capabilities.
-**FRs covered:** FR30, FR31, FR32, FR33, FR46, FR47, FR48, FR49, FR50, FR51, FR52
+### ~~Epic 7: Advanced Output and Batch Processing~~ (DISSOLVED)
+> **Note:** Epic 7 has been dissolved. FR30 (MP4) implemented in Story 2.4. FR50/FR51 (exit codes, JSON) moved to Epic 1. Remaining features (batch mode, additional formats) deferred to Future Scope.
 
 ---
 ## Epic 1: Interactive Terminal Setup and Configuration
@@ -199,12 +198,12 @@ As a user, I want to manage multiple API key profiles for different projects or 
 ---
 ## Epic 2: Core Video Generation Pipeline
 
-Users can provide a simple text prompt and generate a complete video with script, voiceover, images, and compilation. **Addresses root need: Validation that the core dependency on external APIs works and delivers value.**
+Users can provide a simple text prompt and generate a complete video with script, voiceover, images, and compilation. **Includes video timing, aspect ratio, and professional output quality (absorbed from Epic 4).** **Addresses root need: Validation that the core dependency on external APIs works and delivers value.**
 
 ### Story 2.1: Default Script Generation from Prompt
-As a user, I want the system to automatically generate a script from my text prompt using Google Gemini, so that I don't need to write a script manually.
+As a user, I want the system to automatically generate a script from my text prompt using Google Gemini 2.5 Flash (`gemini-2.5-flash`, with option to switch models), so that I don't need to write a script manually.
 **Acceptance Criteria:**
-**Given** I have provided a text prompt, **When** the script generation process runs, **Then** a coherent script is generated based on my prompt, **And** the system successfully authenticates with the Google Gemini API.
+**Given** I have provided a text prompt, **When** the script generation process runs, **Then** a coherent script is generated based on my prompt using Gemini 2.5 Flash (`gemini-2.5-flash` or user-selected model), **And** the system successfully authenticates with the Google Gemini API.
 
 ### Story 2.2: Default Text-to-Speech Generation
 As a user, I want the system to automatically generate TTS from the generated script using Eleven Labs, so that I have voiceover for my video without needing to record it.
@@ -212,24 +211,36 @@ As a user, I want the system to automatically generate TTS from the generated sc
 **Given** I have a generated script, **When** the TTS generation process runs, **Then** an audio file is created with voiceover of the script, **And** the audio quality is suitable for video use.
 
 ### Story 2.3: Default Image Generation from Script
-As a user, I want the system to automatically generate matching images from the script using Eleven Labs, so that I have visual content for my video without needing to create images manually.
+As a user, I want the system to automatically generate matching images from the script using Google Gemini Nano Banana (`gemini-2.5-flash-image`), so that I have visual content for my video without needing to create images manually.
 **Acceptance Criteria:**
-**Given** I have a generated script, **When** the image generation process runs, **Then** images are generated based on thematic keywords extracted from the script sentences, **And** the images are of a consistent and appropriate style.
+**Given** I have a generated script, **When** the image generation process runs, **Then** images are generated based on thematic keywords extracted from the script sentences using Gemini Nano Banana (`gemini-2.5-flash-image`), **And** the images are of a consistent and appropriate style.
 
 ### Story 2.4: Video Compilation from Assets
 As a user, I want the system to compile the generated script, audio, and images into a single video file, so that I have a complete video for my original prompt.
 **Acceptance Criteria:**
-**Given** I have generated script, audio, and images, **When** the video compilation process runs, **Then** a single video file is created combining all elements, **And** the audio and images are synchronized.
+**Given** I have generated script, audio, and images, **When** the video compilation process runs, **Then** a single video file is created combining all elements, **And** the audio and images are synchronized, **And** the output is 1920x1080 (16:9) MP4 with H.264/AAC codecs.
+
+> [!NOTE]
+> **Epic 4 Absorption:** Story 2.4 implements FR11 (image timing), FR12 (audio sync), FR13 (16:9), FR14 (professional pacing), and FR30 (MP4 output). These were originally planned for Epic 4 but are fundamental to video compilation.
 
 ### Story 2.5: Progress Updates During Video Generation
 As a user, I want to receive progress updates during video generation, so that I can understand how long the process will take and its current status.
 **Acceptance Criteria:**
 **Given** I have initiated video generation, **When** the generation process is running, **Then** I receive clear, textual progress updates for each stage (script, audio, images, compilation).
 
-### Story 2.6: Apply Subtle Zoom Effects
+### Story 2.6: Interactive Video Generation Command
+As a user, I want to run an interactive command that guides me through video creation, so that I can generate videos end-to-end without needing to understand the underlying pipeline.
+**Acceptance Criteria:**
+**Given** I have configured my API keys, **When** I run `eleven-video generate`, **Then** I am prompted for my video topic/prompt, **And** the system orchestrates script generation, TTS, image generation, and video compilation, **And** I see progress updates throughout the process (using Story 2.5's progress display), **And** the final video file path is displayed upon completion.
+
+> [!NOTE]
+> **FR1 Implementation:** Story 2.6 implements FR1 (*"Users can generate videos from text prompts through interactive terminal sessions"*) by orchestrating Stories 2.1-2.5 into a unified interactive experience. This is the primary user-facing entry point for Epic 2.
+
+### Story 2.7: Apply Subtle Zoom Effects
 As a user, I want the system to apply subtle zoom effects to images during video compilation, so that the video appears dynamic and non-generic.
 **Acceptance Criteria:**
 **Given** I have images for my video, **When** the editing process applies zoom effects, **Then** subtle zoom-in and zoom-out effects are applied to each image, **And** the video appears more dynamic and visually engaging.
+
 
 ---
 ## Epic 3: Pre-generation Customization
@@ -271,40 +282,18 @@ As a user, I want to configure a default Gemini text generation model preference
 **Acceptance Criteria:**
 **Given** I have configured a default Gemini model in my settings, **When** I generate a video without specifying a model, **Then** the system uses my default Gemini model.
 
----
-## Epic 4: Video Processing and Timing Control
-
-Users can customize video output with image timing controls and proper aspect ratio while maintaining professional output quality standards. **Addresses root need: Ensuring output quality meets professional standards.**
-
-### Story 4.1: Image Duration Timing Control (3-4 seconds)
-As a user, I want the system to ensure image duration is between 3-4 seconds per image, so that my video has optimal pacing for viewer engagement.
-**Acceptance Criteria:**
-**Given** a set of generated images, **When** the video is compiled, **Then** each image is displayed for an average of 3-4 seconds.
-
-### Story 4.2: Audio-Synced Image Timing
-As a user, I want the system to automatically synchronize image timing with the voiceover, so that my video maintains proper pacing and alignment.
-**Acceptance Criteria:**
-**Given** I have audio and images for my video, **When** the synchronization process runs, **Then** image transitions are aligned with the audio track's natural pauses and segments.
-
-### Story 4.3: 16:9 Aspect Ratio Output
-As a user, I want my videos to be output in a 16:9 aspect ratio, so that my content displays properly on common platforms like YouTube.
-**Acceptance Criteria:**
-**Given** I am generating a video, **Then** the output video has a 16:9 aspect ratio (e.g., 1920x1080).
-
-### Story 4.4: Professional Video Pacing and Timing
-As a user, I want my videos to be exported with professional pacing, so that they meet professional quality standards.
-**Acceptance Criteria:**
-**Given** I have all assets for my video, **When** the export process runs, **Then** the final video adheres to the 3-4 second per image rule, **And** the timing between voiceover and image transitions is synchronized.
-
-### Story 4.5: Custom Output Resolution Selection
+### Story 3.8: Custom Output Resolution Selection
 As a user, I want to specify output resolution settings for my videos, so that I can match my video resolution to my specific requirements.
 **Acceptance Criteria:**
 **Given** I am configuring video output, **When** I select a specific resolution (e.g., '1080p', '720p'), **Then** the video is generated at the specified resolution.
 
----
-## Epic 5: Advanced API Monitoring and Resilience
+> [!NOTE]
+> Story 3.8 was moved from Epic 4 (Story 4.5) as it is a pre-generation customization option.
 
-Users can monitor API usage, costs, and quotas in real-time during video generation while the system handles rate limits gracefully. **Addresses root need: Ensuring 80% success rate and preventing tool unreliability.**
+---
+## Epic 5: Advanced API Monitoring
+
+Users can monitor API usage, costs, and quotas in real-time during video generation. **Addresses root need: Cost transparency and usage awareness.**
 
 ### Story 5.1: Real-time API Usage Monitoring During Processing
 As a user, I want to see real-time API usage monitoring during video generation, so that I can track my consumption as the video is being created.
@@ -331,77 +320,44 @@ As a user, I want the system to track API costs during video generation, so that
 **Acceptance Criteria:**
 **Given** I am generating a video using APIs, **When** the generation process runs, **Then** I can see running cost totals for the active session.
 
-### Story 5.6: Rate Limit Handling with Queuing
-As a user, I want the system to handle API rate limits gracefully with queuing, so that my video generation continues when possible rather than failing.
-**Acceptance Criteria:**
-**Given** the system encounters an API rate limit, **When** the rate limit is detected, **Then** requests are queued and retried with exponential backoff.
+---
+## ~~Epic 6: Quality and Reliability Features~~ (DISSOLVED)
+
+> [!NOTE]
+> **Epic 6 has been dissolved.** The functionality is either already implemented or deferred:
+> - **FR41 (80% success rate):** This is a test metric, not an implementable story. Tracked via acceptance tests.
+> - **FR42, FR45 (retry):** Already implemented via `tenacity` decorators in `gemini.py` and `elevenlabs.py`.
+> - **FR43 (fallbacks), FR44 (caching):** Deferred to Future Scope as premature optimization.
 
 ---
-## Epic 6: Quality and Reliability Features
+## ~~Epic 7: Advanced Output and Batch Processing~~ (DISSOLVED)
 
-System ensures reliable video generation with fallback mechanisms, error handling, and caching to achieve 80% success rate. **Addresses root need: Building user trust through consistent, reliable performance.**
-
-### Story 6.1: 80% Success Rate Maintenance
-As a user, I want the system to maintain an 80% success rate for complete video generation, so that I can rely on the tool for my video creation needs.
-**Acceptance Criteria:**
-**Given** I am generating videos under normal conditions, **When** the generation process runs, **Then** at least 80% of video generation attempts complete successfully.
-
-### Story 6.2: API Fallback Mechanisms Implementation
-As a user, I want the system to provide fallback mechanisms when APIs are unavailable, so that video generation can continue using alternative approaches when possible.
-**Acceptance Criteria:**
-**Given** An API service is temporarily unavailable, **When** the system detects the unavailability, **Then** it attempts to use a fallback mechanism (e.g., a different model), **And** the user is informed of the fallback being used.
-
-### Story 6.3: Comprehensive Error Handling Implementation
-As a user, I want the system to handle errors gracefully with clear communication, so that I understand what went wrong and how to potentially fix it.
-**Acceptance Criteria:**
-**Given** An error occurs during video generation, **When** the error is detected, **Then** a clear, actionable error message is displayed to the user.
-
-### Story 6.4: API Response Caching for Optimization
-As a user, I want the system to cache API responses appropriately, so that I can optimize API usage and improve reliability.
-**Acceptance Criteria:**
-**Given** I make repeated requests for similar content, **When** the system has cached responses available, **Then** it uses the cached data to fulfill requests when appropriate.
-
-### Story 6.5: Automatic Operation Retry Implementation
-As a user, I want the system to retry failed operations automatically with exponential backoff, so that temporary failures don't cause complete video generation failure.
-**Acceptance Criteria:**
-**Given** An operation fails temporarily (e.g., due to a network issue), **When** the system detects the failure, **Then** it automatically retries the operation following an exponential backoff strategy.
+> [!NOTE]
+> **Epic 7 has been dissolved.** The functionality is either already implemented, moved, or deferred:
+> - **FR30 (MP4 output):** Implemented in Story 2.4.
+> - **FR50 (exit codes), FR51 (JSON output):** Moved to Epic 1 as CLI infrastructure.
+> - **FR31-33 (additional formats), FR46-49 (batch mode):** Deferred to Future Scope.
 
 ---
-## Epic 7: Advanced Output and Batch Processing
+## Future Scope (Post-MVP)
 
-Users can generate multiple videos in batch mode and export in various formats with non-interactive scripting capabilities. **Addresses root need: Supporting power users who need to scale their video creation efforts.**
+The following features are deferred for future development after MVP completion:
 
-### Story 7.1: MP4 Video Output Format
-As a user, I want the system to output videos in MP4 format, so that I can share my videos on platforms that support MP4.
-**Acceptance Criteria:**
-**Given** I am generating a video, **When** I select MP4 as the output format, **Then** the final video is saved in MP4 format.
+### Output Formats
+- **FR31:** MOV video output format
+- **FR32:** Additional video formats (AVI, WebM)
+- **FR33:** Consistent quality across formats
 
-### Story 7.2: MOV Video Output Format
-As a user, I want the system to output videos in MOV format, so that I can use them for professional editing.
-**Acceptance Criteria:**
-**Given** I am generating a video, **When** I select MOV as the output format, **Then** the final video is saved in MOV format.
+### Batch Processing & Automation
+- **FR46:** Multiple video generation in batch mode
+- **FR47:** Sequential batch processing
+- **FR48:** Queue management for batch tasks
+- **FR49:** Non-interactive mode for scripting
+- **FR52:** Input/output redirection for tool integration
 
-### Story 7.3: Additional Video Format Support (AVI, WebM)
-As a user, I want the system to output videos in additional formats including AVI and WebM, so that I have flexibility to use the format that best suits my needs.
-**Acceptance Criteria:**
-**Given** I am generating a video, **When** I select AVI or WebM as the output format, **Then** the final video is saved in the selected format.
+### Advanced Reliability
+- **FR43:** API fallback mechanisms
+- **FR44:** API response caching for optimization
 
-### Story 7.4: Multiple Video Generation in Batch Mode
-As a user, I want to generate multiple videos in batch mode from a list of prompts, so that I can efficiently create several videos at once without manual intervention.
-**Acceptance Criteria:**
-**Given** I provide a file containing multiple video prompts, **When** I initiate batch processing, **Then** all videos are generated sequentially, **And** I can track the progress of the entire batch.
-
-### Story 7.5: Non-Interactive Mode for Scripting
-As a user, I want the system to operate in a non-interactive mode for scripting, so that I can integrate video generation into automated workflows.
-**Acceptance Criteria:**
-**Given** I provide all required parameters as command-line arguments, **When** I run the system in non-interactive mode, **Then** it operates without requiring user input during processing.
-
-### Story 7.6: Standardized Exit Codes for Automation
-As a user, I want the system to provide standardized exit codes for automation, so that I can programmatically determine if video generation was successful.
-**Acceptance Criteria:**
-**Given** I am running the system in an automated context, **When** video generation completes, **Then** the system returns `0` for success and a non-zero exit code for errors.
-
-### Story 7.7: JSON Output Mode for Parsing Results
-As a user, I want the system to support a JSON output mode for parsing results in scripts, so that I can easily integrate the results into other applications.
-**Acceptance Criteria:**
-**Given** I run the system with a `--json` flag, **When** video generation completes, **Then** the results (e.g., file path, duration, errors) are provided in JSON format to standard output.
+### External Integrations
+- **FR35.2:** Eleven Labs API for image generation (when API becomes available)

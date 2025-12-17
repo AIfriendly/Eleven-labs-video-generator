@@ -67,8 +67,11 @@
 ## Data Architecture
 
 **Configuration and State Storage:**
-- Decision: JSON files in user's home directory (`~/.eleven-video/config.json`)
-- Rationale: Simple, accessible, and appropriate for storing user preferences and non-sensitive configuration
+- Decision: JSON files in OS-standard user config directory via `platformdirs.user_config_dir("eleven-video")`
+  - Windows: `%LOCALAPPDATA%\eleven-video\config.json`
+  - Linux: `~/.config/eleven-video/config.json` (XDG-compliant)
+  - macOS: `~/Library/Application Support/eleven-video/config.json`
+- Rationale: Simple, accessible, and follows OS conventions for storing user preferences and non-sensitive configuration
 - Affects: Configuration management, user experience consistency
 
 ## Authentication & Security
@@ -78,6 +81,14 @@
 - Rationale: Following security best practices while maintaining ease of use
 - Security: API keys stored in .env files with appropriate file permissions (readable by owner only)
 - Affects: Security, user setup experience, deployment
+
+**Canonical Environment Variable Names:**
+| Service | Variable | Auth Header | Official Source |
+|---------|----------|-------------|-----------------|
+| ElevenLabs | `ELEVENLABS_API_KEY` | `xi-api-key` | [ElevenLabs Docs](https://elevenlabs.io/docs) |
+| Google Gemini | `GEMINI_API_KEY` | `x-goog-api-key` | [Google AI Docs](https://ai.google.dev) |
+
+> ⚠️ **Important:** Always use the canonical names listed above. Do NOT use variations like `ELEVEN_API_KEY` or `GOOGLE_API_KEY`.
 
 ## API & Communication Patterns
 

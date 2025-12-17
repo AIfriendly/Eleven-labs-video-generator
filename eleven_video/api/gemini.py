@@ -1,22 +1,21 @@
 """
 Google Gemini API adapter for service health checking and script generation.
 
-Implements ServiceHealth and ScriptGenerator protocols.
+Implements ServiceHealth, ScriptGenerator, and ImageGenerator protocols.
 Uses GET /v1beta/models?page_size=1 for lightweight auth check.
-Uses google-generativeai SDK for script generation.
+Uses google-genai SDK for content generation (text + images).
 Note: Gemini does not expose quota information via API.
 """
 import time
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Union, List
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-import google.generativeai as genai
-from google.api_core import exceptions as google_exceptions
+from google import genai
 
 from eleven_video.api.interfaces import HealthResult, UsageResult
-from eleven_video.models.domain import Script
+from eleven_video.models.domain import Script, Image
 from eleven_video.exceptions.custom_errors import GeminiAPIError, ValidationError
 
 
@@ -33,7 +32,7 @@ class GeminiAdapter:
     
     BASE_URL = "https://generativelanguage.googleapis.com"
     MODELS_ENDPOINT = "/v1beta/models"
-    DEFAULT_MODEL = "gemini-2.5-flash"
+    DEFAULT_MODEL = "gemini-2.5-flash-lite"
     
     def __init__(self, api_key: Optional[str] = None, settings: Optional["_SettingsBase"] = None):
         """Initialize the adapter with API key.
@@ -56,24 +55,24 @@ class GeminiAdapter:
         else:
             raise ValueError("Either api_key or settings is required for GeminiAdapter")
         
-        self._client: Optional[httpx.AsyncClient] = None
+        self._http_client: Optional[httpx.AsyncClient] = None
         
-        # Configure the SDK (does not make network calls)
-        genai.configure(api_key=self._api_key)
+        # Initialize the SDK client (new google-genai SDK pattern)
+        self._genai_client = genai.Client(api_key=self._api_key)
     
     @property
     def service_name(self) -> str:
         """Human-readable service name."""
         return "Google Gemini"
     
-    async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create the async HTTP client."""
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        """Get or create the async HTTP client for health checks."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(
                 base_url=self.BASE_URL,
                 timeout=10.0
             )
-        return self._client
+        return self._http_client
     
     @retry(
         stop=stop_after_attempt(3),
@@ -82,8 +81,8 @@ class GeminiAdapter:
     )
     async def _fetch_models(self) -> httpx.Response:
         """Fetch models list with retry logic (lightweight auth check)."""
-        client = await self._get_client()
-        response = await client.get(
+        http_client = await self._get_http_client()
+        response = await http_client.get(
             self.MODELS_ENDPOINT,
             params={"key": self._api_key, "pageSize": 1}
         )
@@ -220,10 +219,14 @@ class GeminiAdapter:
         """Internal method with retry logic for API calls.
         
         Retries on transient connection/timeout errors.
+        Uses new google-genai SDK client.models.generate_content pattern.
         """
-        model = genai.GenerativeModel(self.DEFAULT_MODEL)
-        response = model.generate_content(prompt)
-        return Script(content=response.text)
+        response = self._genai_client.models.generate_content(
+            model=self.DEFAULT_MODEL,
+            contents=prompt
+        )
+        # Extract text from new SDK response structure
+        return Script(content=response.candidates[0].content.parts[0].text)
     
     def _format_error(self, error: Exception) -> str:
         """Format error message without exposing API key (AC2).
@@ -257,6 +260,137 @@ class GeminiAdapter:
     
     async def close(self):
         """Close the HTTP client."""
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
 
+    # =========================================================================
+    # Image Generation (Story 2.3)
+    # =========================================================================
+    
+    IMAGE_MODEL = "gemini-2.5-flash-image"  # Nano Banana model for image generation
+    STYLE_SUFFIX = ", photorealistic, cinematic composition, 16:9 aspect ratio, high quality"
+    
+    def generate_images(
+        self,
+        script: Script,
+        progress_callback: Optional[Callable[[str], None]] = None
+    ) -> List[Image]:
+        """Generate images from script content using Gemini Nano Banana.
+        
+        Args:
+            script: The Script domain model to generate images for.
+            progress_callback: Optional callback with format "Generating image X of Y".
+            
+        Returns:
+            List of Image domain models with bytes and metadata.
+            
+        Raises:
+            ValidationError: If script is empty or invalid.
+            GeminiAPIError: If API call fails.
+        """
+        # AC4: Validate script before API call
+        if script is None:
+            raise ValidationError("Script cannot be None")
+        if not script.content or not script.content.strip():
+            raise ValidationError("Script content cannot be empty or whitespace-only")
+        
+        # Segment script into image prompts
+        segments = self._segment_script(script.content)
+        
+        if not segments:
+            raise ValidationError("Could not extract any image-generating content from script")
+        
+        images: List[Image] = []
+        total_images = len(segments)
+        
+        for i, segment in enumerate(segments, start=1):
+            # AC3: Progress callback
+            if progress_callback:
+                progress_callback(f"Generating image {i} of {total_images}")
+            
+            try:
+                image = self._generate_image_with_retry(segment)
+                images.append(image)
+            except TimeoutError:
+                raise GeminiAPIError("Request timed out. Please check your connection and try again.")
+            except Exception as e:
+                error_msg = self._format_error(e)
+                raise GeminiAPIError(error_msg)
+        
+        if progress_callback:
+            progress_callback(f"Generated {len(images)} images successfully")
+        
+        return images
+    
+    def _segment_script(self, content: str) -> List[str]:
+        """Split script into segments for image generation (Task 5).
+        
+        Splits by paragraphs first, then by major sentences if needed.
+        Each segment becomes a prompt with style suffix appended.
+        
+        Args:
+            content: Raw script text content.
+            
+        Returns:
+            List of image prompts with style suffix.
+        """
+        # Split by double newlines (paragraphs)
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        
+        if not paragraphs:
+            # Fall back to single newlines
+            paragraphs = [p.strip() for p in content.split('\n') if p.strip()]
+        
+        if not paragraphs:
+            # Last resort: treat entire content as one segment
+            paragraphs = [content.strip()]
+        
+        # Create image prompts with style suffix
+        prompts = []
+        for paragraph in paragraphs:
+            # Take first sentence or full paragraph if short
+            if len(paragraph) > 200:
+                # Split long paragraphs by sentence
+                sentences = paragraph.replace('!', '.').replace('?', '.').split('.')
+                for sentence in sentences:
+                    if sentence.strip() and len(sentence.strip()) > 10:
+                        prompts.append(sentence.strip() + self.STYLE_SUFFIX)
+                        break  # Only take first substantial sentence
+            else:
+                prompts.append(paragraph + self.STYLE_SUFFIX)
+        
+        return prompts
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+        reraise=True
+    )
+    def _generate_image_with_retry(self, prompt: str) -> Image:
+        """Generate a single image with retry logic (Task 6).
+        
+        Args:
+            prompt: The image generation prompt with style suffix.
+            
+        Returns:
+            Image domain model with bytes and metadata.
+        """
+        response = self._genai_client.models.generate_content(
+            model=self.IMAGE_MODEL,
+            contents=prompt
+        )
+        
+        # Parse response to extract image data
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'inline_data') and part.inline_data is not None:
+                image_bytes = part.inline_data.data
+                mime_type = getattr(part.inline_data, 'mime_type', 'image/png')
+                return Image(
+                    data=image_bytes,
+                    mime_type=mime_type,
+                    file_size_bytes=len(image_bytes)
+                )
+        
+        # If no image data found, raise error
+        raise GeminiAPIError("No image data returned from Gemini API")

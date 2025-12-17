@@ -1,0 +1,14 @@
+============================================================
+Story 2.5: Progress Updates Demo
+============================================================
+
+[1] Creating progress tracker...
+[2] Starting PROCESSING_SCRIPT stage...
+    OK - Script stage completed
+[3] Starting PROCESSING_IMAGES stage...
+    OK - Images stage completed
+[4] Showing summary...
+
+============================================================
+SUCCESS: Story 2.5 is working correctly!
+============================================================

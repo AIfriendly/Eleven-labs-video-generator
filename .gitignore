@@ -26,7 +26,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+node_modules/
 # Virtual environments
 venv/
 .venv/
@@ -58,3 +58,10 @@ cover/
 
 # Environment variables
 .env
+output/script_20251215_163919.txt
+output/script_20251215_165238.txt
+output/script_20251215_171412.txt
+output/script_20251215_173200.txt
+output/voiceover_20251215_163919.mp3
+output/voiceover_20251215_165238.mp3
+output/voiceover_20251215_171412.mp3

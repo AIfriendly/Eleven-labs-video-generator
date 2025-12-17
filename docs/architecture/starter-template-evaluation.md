@@ -34,7 +34,7 @@ This would use:
 - Supports interactive terminal interfaces effectively
 - Has strong libraries for real-time progress monitoring
 - Cross-platform compatibility for Windows, Mac, and Linux
-- Most importantly: The PRD indicates that video processing happens via Eleven Labs' editing API, not heavy local processing, so we don't need specialized video processing libraries
+- Most importantly: Video processing happens locally via FFmpeg, not through external API, so we need basic video processing capabilities
 
 **Initialization Approach:**
 
@@ -66,7 +66,7 @@ poetry init  # or pip init for package management
 - Environment variables for sensitive data
 
 **Video Processing:**
-- Minimal local processing (primarily coordinating Eleven Labs' video editing API)
+- Local video compilation via FFmpeg for professional editing effects
 - Possible light processing with pillow for image timing controls (3-4 second durations)
 - Focus on API orchestration rather than heavy local video processing
 
@@ -85,7 +85,7 @@ eleven-video/
 │   │   ├── __init__.py
 │   │   ├── video_pipeline.py # Coordinate the full pipeline
 │   │   ├── timing_controller.py # Handle 3-4 second image timing
-│   │   └── edit_compiler.py # Manage Eleven Labs editing features
+│   │   └── edit_compiler.py # FFmpeg video compilation and effects
 │   ├── ui/
 │   │   ├── __init__.py
 │   │   └── terminal.py      # Rich-based UI components for real-time monitoring

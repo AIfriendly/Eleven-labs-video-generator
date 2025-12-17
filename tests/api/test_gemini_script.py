@@ -34,20 +34,24 @@ class TestScriptGenerationSuccess:
 
     def test_generate_script_uses_default_model(self, mock_genai):
         """
-        [2.1-UNIT-002] AC1: Default model gemini-2.5-flash is used.
+        [2.1-UNIT-002] AC1: Uses gemini-2.5-flash model.
         
-        GIVEN no model specified
+        GIVEN a valid prompt
         WHEN generating a script
-        THEN gemini-2.5-flash is used as default.
+        THEN the gemini-2.5-flash model is used.
         """
         from eleven_video.api.gemini import GeminiAdapter
         
-        mock_model_cls, mock_model, mock_response = mock_genai
+        mock_client_cls, mock_client, mock_response = mock_genai
         
         adapter = GeminiAdapter(api_key="test-key")
         adapter.generate_script("Test prompt")
         
-        mock_model_cls.assert_called_with("gemini-2.5-flash")
+        # Verify model parameter in new SDK call
+        mock_client.models.generate_content.assert_called_once()
+        call_kwargs = mock_client.models.generate_content.call_args
+        assert call_kwargs.kwargs.get('model') == "gemini-2.5-flash" or \
+               (call_kwargs.args and "gemini-2.5-flash" in str(call_kwargs))
 
     def test_generate_script_returns_script_model(self, mock_genai):
         """

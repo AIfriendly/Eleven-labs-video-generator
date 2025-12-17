@@ -1,0 +1,107 @@
+# generated: 2025-12-12
+# project: Eleven-labs-AI-Video
+# project_key: ELAV
+# tracking_system: file-system
+# story_location: docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2025-12-12
+project: Eleven-labs-AI-Video
+project_key: ELAV
+tracking_system: file-system
+story_location: docs/sprint-artifacts
+
+development_status:
+  # Epic 1
+  epic-1: in-progress
+  1-1-terminal-installation-and-basic-execution: done
+
+  1-2-api-key-configuration-via-environment-variables: done
+
+  1-3-interactive-setup-and-configuration-file-creation: done
+
+  1-4-terminal-help-system: done
+
+  1-5-api-status-and-usage-checking: done
+
+  1-6-multiple-api-key-profile-management: done
+  epic-1-retrospective: completed
+
+  # Epic 2
+  epic-2: in-progress
+  2-1-default-script-generation-from-prompt: done
+  2-2-default-text-to-speech-generation: done
+  2-3-default-image-generation-from-script: done
+  2-4-video-compilation-from-assets: done
+  2-5-progress-updates-during-video-generation: done
+  2-6-interactive-video-generation-command: done
+  2-7-apply-subtle-zoom-effects: done
+  epic-2-retrospective: completed
+
+  # Epic 3
+  epic-3: backlog
+  3-1-custom-voice-model-selection: backlog
+  3-2-custom-image-generation-model-selection: backlog
+  3-3-interactive-voice-selection-prompts: backlog
+  3-4-interactive-image-model-selection-prompts: backlog
+  3-5-gemini-text-generation-model-selection: backlog
+  3-6-video-duration-selection: backlog
+  3-7-gemini-model-preference-configuration: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4 (DISSOLVED - Merged into Epic 2)
+  # Stories 4.1-4.4 implemented in Story 2.4
+  # Story 4.5 moved to Epic 3 as Story 3.8
+  epic-4: dissolved
+
+  # Epic 5 (Streamlined - removed rate limiting, already implemented via tenacity)
+  epic-5: backlog
+  5-1-real-time-api-usage-monitoring-during-processing: backlog
+  5-2-model-specific-usage-metrics-for-gemini-api: backlog
+  5-3-live-consumption-data-viewing: backlog
+  5-4-api-quota-information-display: backlog
+  5-5-api-cost-tracking-during-generation: backlog
+  # 5-6 removed - rate limiting already implemented in adapters
+  epic-5-retrospective: optional
+
+  # Epic 6 (DISSOLVED - Already implemented or deferred)
+  # FR41 (80% success) = test metric, not story
+  # FR42/45 (retry) = implemented via tenacity
+  # FR43/44 (fallback/cache) = Future Scope
+  epic-6: dissolved
+
+  # Epic 7 (DISSOLVED - Implemented, moved, or deferred)
+  # FR30 (MP4) = implemented in Story 2.4
+  # FR50/51 (exit codes, JSON) = moved to Epic 1
+  # Remaining = Future Scope
+  epic-7: dissolved
+

@@ -37,12 +37,13 @@ eleven-video/
 │   ├── architecture.md
 │   ├── user-guide.md
 │   └── api-reference.md
-├── src/
+├── eleven_video/
 │   ├── __init__.py
 │   ├── main.py              # Entry point with Typer CLI
 │   ├── config/
 │   │   ├── __init__.py
 │   │   ├── settings.py      # Pydantic configuration model with .env support
+│   │   ├── persistence.py   # JSON config file I/O via platformdirs
 │   │   └── validators.py    # Configuration validation helpers
 │   ├── api/
 │   │   ├── __init__.py
@@ -55,7 +56,7 @@ eleven-video/
 │   │   ├── base_pipeline.py # Base pipeline interface
 │   │   ├── video_pipeline.py # Coordinate the full pipeline
 │   │   ├── timing_controller.py # Handle 3-4 second image timing
-│   │   └── edit_compiler.py # Manage Eleven Labs editing features
+│   │   └── edit_compiler.py # FFmpeg video compilation and effects
 │   ├── processing/
 │   │   ├── __init__.py
 │   │   ├── image_handler.py # Handle image processing
@@ -131,10 +132,17 @@ eleven-video/
 - Data access boundaries: API responses converted to domain models in adapter layer
 
 **Component Boundaries:**
-- Main CLI component: Coordinates user interaction via Typer
+- Main CLI component: Coordinates user interaction via Typer (Epic 1)
+- **Orchestrator component:** Central coordinator for video generation pipeline (Story 2.6). The `video_pipeline.py` orchestrates the interactive `eleven-video generate` command by:
+  - Prompting user for video topic (via `ui/prompts.py`)
+  - Calling `GeminiAdapter.generate_script()` (Story 2.1)
+  - Calling `ElevenLabsAdapter.generate_speech()` (Story 2.2)
+  - Calling `GeminiAdapter.generate_images()` (Story 2.3)
+  - Calling `FFmpegVideoCompiler.compile_video()` (Story 2.4)
+  - Displaying progress via `VideoPipelineProgress` (Story 2.5)
 - API adapter component: Handles all external API communication
-- Orchestrator component: Manages the video generation workflow
 - UI component: Handles terminal interface using Rich
+
 
 **Service Boundaries:**
 - API service boundary: All external API calls go through adapter layer
@@ -153,34 +161,34 @@ eleven-video/
 **Feature Mapping:**
 
 Interactive Terminal Interface:
-- Components: `src/ui/terminal.py`, `src/ui/prompts.py`
-- Main entry: `src/main.py`
+- Components: `eleven_video/ui/terminal.py`, `eleven_video/ui/prompts.py`
+- Main entry: `eleven_video/main.py`
 - Tests: `tests/ui/test_terminal.py`, `tests/test_main.py`
 
 API Integration (Eleven Labs & Google Gemini):
-- Components: `src/api/elevenlabs.py`, `src/api/gemini.py`
-- Base layer: `src/api/base_adapter.py`, `src/api/adapters.py`
+- Components: `eleven_video/api/elevenlabs.py`, `eleven_video/api/gemini.py`
+- Base layer: `eleven_video/api/base_adapter.py`, `eleven_video/api/adapters.py`
 - Tests: `tests/api/test_elevenlabs.py`, `tests/api/test_gemini.py`
 
 Video Processing Pipeline:
-- Components: `src/orchestrator/video_pipeline.py`, `src/orchestrator/timing_controller.py`
-- Processing: `src/processing/image_handler.py`, `src/processing/audio_handler.py`, `src/processing/video_handler.py`
+- Components: `eleven_video/orchestrator/video_pipeline.py`, `eleven_video/orchestrator/timing_controller.py`
+- Processing: `eleven_video/processing/image_handler.py`, `eleven_video/processing/audio_handler.py`, `eleven_video/processing/video_handler.py`
 - Tests: `tests/orchestrator/test_video_pipeline.py`, `tests/processing/`
 
 Real-time Monitoring:
-- Components: `src/ui/displays.py`, `src/ui/terminal.py`
+- Components: `eleven_video/ui/displays.py`, `eleven_video/ui/terminal.py`
 - Integration: Rich progress bars and API usage tracking
 - Tests: `tests/ui/test_terminal.py`
 
 Configuration Management:
-- Components: `src/config/settings.py`, `src/config/validators.py`
+- Components: `eleven_video/config/settings.py`, `eleven_video/config/validators.py`
 - Environment files: `.env` (for API keys), `.env.example` (template)
 - Tests: `tests/config/test_settings.py`
 
 **Cross-Cutting Concerns:**
-Error Handling: `src/exceptions/custom_errors.py`, consistent across all modules
-Logging: `src/utils/logger.py`, integrated in all components
-Validation: `src/utils/validators.py`, `src/config/validators.py`, at all boundaries
+Error Handling: `eleven_video/exceptions/custom_errors.py`, consistent across all modules
+Logging: `eleven_video/utils/logger.py`, integrated in all components
+Validation: `eleven_video/utils/validators.py`, `eleven_video/config/validators.py`, at all boundaries
 Testing: `tests/` directory with parallel structure, comprehensive test coverage across all modules
 
 ## Integration Points
@@ -191,19 +199,19 @@ Testing: `tests/` directory with parallel structure, comprehensive test coverage
 - Configuration dependency injected into all components
 
 **External Integrations:**
-- Eleven Labs API: `src/api/elevenlabs.py`
-- Google Gemini API: `src/api/gemini.py`
+- Eleven Labs API: `eleven_video/api/elevenlabs.py`
+- Google Gemini API: `eleven_video/api/gemini.py`
 - File system for temporary processing and output
 
 **Data Flow:**
-Text prompt → Gemini API → Script → Eleven Labs TTS → Audio → Eleven Labs Images → Images → Eleven Labs Editor → Video
+Text prompt → Gemini API (`gemini-2.5-flash`) → Script → Eleven Labs TTS → Audio → Gemini Nano Banana (`gemini-2.5-flash-image`) → Images → FFmpeg → Video
 
 ## File Organization Patterns
 
 **Configuration Files:**
 - `pyproject.toml` and `poetry.lock` at project root
 - `.env.example` for environment variable examples
-- `src/config/` for application-specific configuration
+- `eleven_video/config/` for application-specific configuration
 
 **Source Organization:**
 - Hexagonal architecture with clear separation of concerns
@@ -211,7 +219,7 @@ Text prompt → Gemini API → Script → Eleven Labs TTS → Audio → Eleven L
 - Co-located tests following same directory structure
 
 **Test Organization:**
-- Tests parallel source structure (e.g., `tests/api/` matches `src/api/`)
+- Tests parallel source structure (e.g., `tests/api/` matches `eleven_video/api/`)
 - Integration tests in orchestrator module
 - Unit tests for all components
 

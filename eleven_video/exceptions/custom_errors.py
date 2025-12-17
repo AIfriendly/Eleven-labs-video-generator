@@ -62,3 +62,18 @@ class ElevenLabsAPIError(Exception):
         self.message = message
         super().__init__(self.message)
 
+
+class VideoProcessingError(Exception):
+    """Raised when video compilation fails (FFmpeg errors, disk issues).
+    
+    This exception is raised when:
+    - FFmpeg is not installed or not found in PATH
+    - Video encoding fails
+    - Disk write permission denied
+    - Temporary file operations fail
+    """
+
+    def __init__(self, message: str = "Video processing error occurred"):
+        self.message = message
+        super().__init__(self.message)
+

@@ -38,7 +38,7 @@ The service differentiates itself by focusing on an end-to-end automated video p
 
 - Interactive terminal execution: Generate complete videos from a text prompt via guided session with interactive prompts
 - Pre-generation customization: Select image models and voiceover options before starting video generation
-- End-to-end automation: Script generation → TTS → Image generation → Video compilation using Eleven Labs editing features
+- End-to-end automation: Script generation → TTS → Image generation → Video compilation using FFmpeg
 - Local execution: All processing happens on the user's system with no external SaaS dependencies
 - Cost predictability: No recurring API costs when running locally, with transparent costs for underlying API usage
 - Quality consistency: Standardized output quality that meets professional standards through quality validation
@@ -58,7 +58,7 @@ The service differentiates itself by focusing on an end-to-end automated video p
 
 ### What Makes This Special
 
-The service stands out by providing a complete automated video production pipeline through an interactive terminal session. Instead of users needing to coordinate multiple AI services manually, we're creating an integrated solution that chains Google Gemini for script generation, Eleven Labs for TTS and image generation, and Eleven Labs' editing features for final video compilation. The approach prioritizes simplicity - the user provides a text prompt through interactive prompts and receives a complete professional video.
+The service stands out by providing a complete automated video production pipeline through an interactive terminal session. Instead of users needing to coordinate multiple AI services manually, we're creating an integrated solution that chains Google Gemini 2.5 Flash (`gemini-2.5-flash`, switchable) for script generation, Google Gemini Nano Banana (`gemini-2.5-flash-image`) for image generation, Eleven Labs for TTS and sound effects, and FFmpeg for final video compilation. The approach prioritizes simplicity - the user provides a text prompt through interactive prompts and receives a complete professional video.
 
 Our defense against commoditization lies in three areas:
 1. Integrated automation that chains multiple AI services into a single workflow
@@ -104,7 +104,7 @@ User feedback has highlighted key concerns about rate limits, video quality cons
 **Complexity:** low
 **Project Context:** Greenfield - new application
 
-The project leverages existing AI APIs (Eleven Labs for TTS, image generation and video editing; Google Gemini for script generation) but with a focus on reliable automation and consistency. The local interactive terminal tool will implement robust queuing and caching systems to handle API limitations while providing predictable performance. The MVP will focus on core functionality: accepting a text prompt, allowing pre-generation selection of image models and voiceover options, generating a script via Gemini, creating TTS with Eleven Labs, generating images with Eleven Labs, and compiling the final video using Eleven Labs editing features with 3-4 second image durations for optimal pacing and professional appearance with subtle zoom effects. Success metrics include: <10 second terminal startup time, 80% success rate for complete video generation, average processing time under 5 minutes per video, and user satisfaction score above 4/5. Advanced features like real-time API usage monitoring, batch processing, local caching, workflow integration, image timing optimization, pre-generation customization, professional video editing, and robust error handling will be implemented to ensure a superior user experience with complete transparency on API consumption and costs.
+The project leverages existing AI APIs (Eleven Labs for TTS and sound effects; Google Gemini for script generation; Google Gemini Nano Banana for image generation) but with a focus on reliable automation and consistency. The local interactive terminal tool will implement robust queuing and caching systems to handle API limitations while providing predictable performance. The MVP will focus on core functionality: accepting a text prompt, allowing pre-generation selection of image models and voiceover options, generating a script via Gemini, creating TTS with Eleven Labs, generating images with Nano Banana, and compiling the final video using FFmpeg with 3-4 second image durations for optimal pacing and professional appearance with subtle zoom effects. Success metrics include: <10 second terminal startup time, 80% success rate for complete video generation, average processing time under 5 minutes per video, and user satisfaction score above 4/5. Advanced features like real-time API usage monitoring, batch processing, local caching, workflow integration, image timing optimization, pre-generation customization, professional video editing, and robust error handling will be implemented to ensure a superior user experience with complete transparency on API consumption and costs.
 
 ## Success Criteria
 
@@ -119,7 +119,7 @@ The project leverages existing AI APIs (Eleven Labs for TTS, image generation an
 - Users can generate videos with <10 second terminal startup time and achieve 80% success rate for complete video generation
 - Users report satisfaction score above 4/5 after using the tool
 - Users can generate videos with average processing time under 5 minutes
-- Users receive professional video editing via Eleven Labs features that enhance visual appeal with non-generic, sophisticated editing
+- Users receive professional video editing via FFmpeg features that enhance visual appeal with non-generic, sophisticated editing
 
 ### Business Success
 
@@ -132,7 +132,7 @@ The project leverages existing AI APIs (Eleven Labs for TTS, image generation an
 
 ### Technical Success
 
-- API integration stability with Eleven Labs (for TTS, image generation and video editing) and Google Gemini (for script generation)
+- API integration stability with Eleven Labs (for TTS and sound effects), Google Gemini (for script generation), and Nano Banana (for image generation)
 - Consistent video generation success rate maintaining the 80% target
 - Processing time efficiency with videos generated under 5 minutes each
 - Reliable caching and queuing mechanisms to handle API limits and optimize usage
@@ -158,18 +158,16 @@ The project leverages existing AI APIs (Eleven Labs for TTS, image generation an
 
 - Interactive terminal tool with guided session execution for video generation from text prompt
 - Pre-generation customization allowing selection of image models and voiceover options
-- End-to-end automation: script generation via Google Gemini → TTS via Eleven Labs → Image generation via Eleven Labs → Video compilation via Eleven Labs editing features
+- End-to-end automation: script generation via Google Gemini → TTS via Eleven Labs → Image generation via Gemini → Video compilation via FFmpeg
 - Professional video editing with subtle zoom effects (slow zoom in and zoom out per image) to avoid generic appearance
 - 3-4 second image timing optimization for optimal pacing and viewer engagement
-- Real-time API usage monitoring with live display of consumption, quotas, and costs
+- Progress tracking with clear feedback during each stage of the video generation pipeline
 - Local execution with no external SaaS dependencies
 - Quality validation to ensure professional output standards
-- Progress tracking with clear feedback during each stage of the video generation pipeline
-- Batch processing support for generating multiple videos
-- Output in multiple video formats and resolutions
+- Output in MP4 format with 16:9 aspect ratio (1920x1080)
 - Intuitive terminal design with help system and parameter validation
-- Robust error handling with fallback mechanisms and retry logic
-- Local caching to optimize API usage and speed up repeated tasks
+- Robust error handling with retry logic (implemented via tenacity)
+- Standardized exit codes and JSON output mode for scripting support
 
 ### Growth Features (Post-MVP)
 
@@ -185,6 +183,16 @@ The project leverages existing AI APIs (Eleven Labs for TTS, image generation an
 - Collaborative video creation workflows
 - Advanced personalization algorithms
 - Expanded API provider options
+- **OpenRouter Integration** - Alternative API provider (identified during Epic 2 retrospective) offering:
+  - **LLM Access:** 25+ free models including Llama 4, DeepSeek v3, Gemini 2.5 Pro with 50-1000 daily requests (regenerates daily)
+  - **Image Generation:** Free models like Google Nano Banana Pro, Sourceful Riverflow V2 for text-to-image
+  - **Unified API:** Single integration for multiple providers (reduces code complexity)
+  - **Rate Limit Mitigation:** More generous daily limits vs direct Gemini API constraints
+- **Google Cloud Text-to-Speech** - Alternative TTS provider to ElevenLabs offering:
+  - **Free Tier:** 1M characters/month (WaveNet/Neural2), 4M characters/month (Standard voices)
+  - **Quality:** High-quality neural voices comparable to ElevenLabs
+  - **Integration:** Official Python SDK (`google-cloud-texttospeech`)
+  - **Setup:** Requires Google Cloud service account credentials
 
 ## User Journeys
 
@@ -330,21 +338,22 @@ The implementation will follow interactive terminal design patterns and user exp
 ### Post-MVP Features
 
 **Phase 2 (Post-MVP):**
+- Real-time API usage monitoring with live display of consumption, quotas, and costs
 - Advanced customization options for visual effects and transitions
 - Interactive configuration management with profiles
 - Enhanced interactive menus and selection options
-- Batch processing for multiple videos
-- Enhanced error recovery and retry mechanisms
-- Additional video output formats (AVI, WebM)
 - More granular timing controls
 
-**Phase 3 (Expansion):**
+**Phase 3 (Future Scope):**
+- Batch processing for multiple videos
+- Additional video output formats (MOV, AVI, WebM)
+- API fallback mechanisms for service unavailability
+- Local caching to optimize API usage and speed up repeated tasks
+- Non-interactive mode for scripting integration
 - Template marketplace for common video types
 - Advanced analytics on video performance
 - Integration with additional AI service providers
 - Collaboration features for team usage
-- Plugin architecture for custom functionality
-- Advanced scheduling and automation features
 
 ### Risk Mitigation Strategy
 
@@ -370,6 +379,9 @@ The implementation will follow interactive terminal design patterns and user exp
 - FR10: The system can apply subtle zoom effects to images during video compilation
 
 ### Video Processing & Timing
+
+> [!NOTE]
+> FR11-FR14 are implemented as part of the Core Video Generation Pipeline (Epic 2, Story 2.4).
 
 - FR11: Users can control image duration timing to 3-4 seconds per image
 - FR12: The system can automatically synchronize image timing with audio
@@ -401,17 +413,22 @@ The implementation will follow interactive terminal design patterns and user exp
 
 ### Video Output & Formats
 
-- FR30: The system can output videos in MP4 format
-- FR31: The system can output videos in MOV format
-- FR32: The system can output videos in additional formats (AVI, WebM)
-- FR33: The system can maintain consistent video quality across output formats
+> [!NOTE]
+> FR30 (MP4) is implemented in Epic 2. FR31-33 are deferred to Future Scope.
+
+- FR30: The system can output videos in MP4 format ✅ (Implemented)
+- FR31: The system can output videos in MOV format (Future Scope)
+- FR32: The system can output videos in additional formats (AVI, WebM) (Future Scope)
+- FR33: The system can maintain consistent video quality across output formats (Future Scope)
 - FR34: Users can specify output resolution settings
 
 ### API Integration & Monitoring
 
-- FR35: The system can integrate with Eleven Labs API for TTS and image generation
-- FR36: The system can integrate with Google Gemini API for script generation
-- FR36.1: The system can integrate with multiple Gemini text generation models
+- FR35: The system can integrate with Eleven Labs API for TTS and sound effects
+- FR35.1: The system can integrate with Google Gemini Nano Banana (`gemini-2.5-flash-image`) for image generation
+- FR35.2: [FUTURE SCOPE] The system can integrate with Eleven Labs API for image generation (when API becomes available)
+- FR36: The system can integrate with Google Gemini 2.5 Flash API (`gemini-2.5-flash`) for script generation (default, switchable)
+- FR36.1: The system can integrate with multiple Gemini text generation models (user-switchable)
 - FR37: The system can provide real-time API usage monitoring during processing
 - FR37.1: The system can provide model-specific usage metrics for Google Gemini API
 - FR38: Users can view live consumption data during video generation
@@ -420,24 +437,33 @@ The implementation will follow interactive terminal design patterns and user exp
 
 ### Quality & Reliability
 
-- FR41: The system can maintain 80% success rate for complete video generation
-- FR42: The system can handle API rate limits gracefully with queuing
-- FR43: The system can provide fallback mechanisms when APIs are unavailable
-- FR44: The system can cache intermediate outputs to optimize API usage
-- FR45: The system can retry failed operations automatically
+> [!NOTE]
+> FR42/FR45 (retry) are implemented via tenacity decorators in adapters. FR41 is a test metric. FR43/FR44 are deferred to Future Scope.
 
-### Batch Processing
+- FR41: The system can maintain 80% success rate for complete video generation (Test Metric)
+- FR42: The system can handle API rate limits gracefully with queuing ✅ (Implemented via tenacity)
+- FR43: The system can provide fallback mechanisms when APIs are unavailable (Future Scope)
+- FR44: The system can cache intermediate outputs to optimize API usage (Future Scope)
+- FR45: The system can retry failed operations automatically ✅ (Implemented via tenacity)
 
-- FR46: Users can generate multiple videos in batch mode
-- FR47: The system can process multiple video requests in sequence
-- FR48: The system can manage queueing for multiple video generation tasks
+### Batch Processing (Future Scope)
+
+> [!NOTE]
+> FR46-48 are deferred to Future Scope as post-MVP features.
+
+- FR46: Users can generate multiple videos in batch mode (Future Scope)
+- FR47: The system can process multiple video requests in sequence (Future Scope)
+- FR48: The system can manage queueing for multiple video generation tasks (Future Scope)
 
 ### Scripting & Automation
 
-- FR49: The system can operate in non-interactive mode for scripting
-- FR50: The system can provide standardized exit codes for automation
-- FR51: The system can support JSON output mode for parsing results in scripts
-- FR52: The system can support input/output redirection for integration with other tools
+> [!NOTE]
+> FR50/FR51 are part of Epic 1 (CLI infrastructure). FR49/FR52 are deferred to Future Scope.
+
+- FR49: The system can operate in non-interactive mode for scripting (Future Scope)
+- FR50: The system can provide standardized exit codes for automation ✅ (Epic 1)
+- FR51: The system can support JSON output mode for parsing results in scripts ✅ (Epic 1)
+- FR52: The system can support input/output redirection for integration with other tools (Future Scope)
 
 ## Non-Functional Requirements
 

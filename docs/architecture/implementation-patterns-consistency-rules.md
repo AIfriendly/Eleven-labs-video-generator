@@ -20,12 +20,12 @@
 **Project Organization:**
 - `.env` - Environment file for API keys and configuration
 - `.env.example` - Example environment file with template
-- `src/api/` - API adapters for Eleven Labs, Google Gemini, etc.
-- `src/orchestrator/` - Pipeline coordination and video generation workflow
-- `src/ui/` - Terminal interface components using Rich
-- `src/config/` - Configuration management with Pydantic
-- `tests/` - Tests with same structure as `src/` (e.g., `tests/api/test_elevenlabs.py`)
-- `src/utils/` - Shared utilities and helpers
+- `eleven_video/api/` - API adapters for Eleven Labs, Google Gemini, etc.
+- `eleven_video/orchestrator/` - Pipeline coordination and video generation workflow
+- `eleven_video/ui/` - Terminal interface components using Rich
+- `eleven_video/config/` - Configuration management with Pydantic
+- `tests/` - Tests with same structure as `eleven_video/` (e.g., `tests/api/test_elevenlabs.py`)
+- `eleven_video/utils/` - Shared utilities and helpers
 
 **Module Structure:**
 - Each module should have `__init__.py` for clear imports

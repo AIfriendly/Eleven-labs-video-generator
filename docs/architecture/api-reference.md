@@ -89,9 +89,10 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGener
 ### Recommended Models
 | Model | Use Case |
 |-------|----------|
-| `gemini-2.5-flash` | Fast text generation (default) |
+| `gemini-2.5-flash` | Fast text generation (default for scripts) |
+| `gemini-2.5-flash-image` | **Image generation (Nano Banana)** - 500 free/day |
 | `gemini-1.5-pro` | Complex reasoning tasks |
-| `gemini-2.0-flash-exp` | Experimental multimodal |
+| `gemini-3-pro-image-preview` | High-res image generation (Nano Banana Pro, paid) |
 
 ---
 

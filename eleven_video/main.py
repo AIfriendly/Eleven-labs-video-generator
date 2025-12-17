@@ -284,5 +284,60 @@ def profile_delete_cmd(
         raise typer.Exit(1)
 
 
+@app.command()
+def generate(
+    prompt: Optional[str] = typer.Option(None, "--prompt", "-p", help="Text prompt to generate video from"),
+    voice: Optional[str] = typer.Option(None, "--voice", "-v", help="Voice ID to use"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
+):
+    """
+    Generate an AI video from a prompt.
+
+    Orchestrates the full pipeline:
+    1. Generates a script from your prompt (Gemini).
+    2. Converts script to audio (ElevenLabs).
+    3. Generates visuals for each scene (Gemini).
+    4. Compiles everything into a final video (FFmpeg).
+    """
+    from eleven_video.orchestrator import VideoPipeline
+
+    # Interactive prompt if not provided
+    if not prompt:
+        console.print(Panel.fit(
+            "[bold cyan]Eleven Video Generator[/bold cyan]\n"
+            "Generate a video from a text topic.",
+            border_style="cyan"
+        ))
+        prompt = Prompt.ask("[bold green]Enter your video topic/prompt[/bold green]")
+    
+    # Load settings (respecting profile override)
+    try:
+        profile_override = _profile_override_state.get("profile")
+        settings = Settings(_profile_override=profile_override)
+    except ConfigurationError as e:
+        console.print(f"[red]Configuration Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    # Initialize pipeline
+    pipeline = VideoPipeline(
+        settings=settings, 
+        output_dir=output.parent if output else None
+    )
+
+    try:
+        console.print(f"\n[dim]Initializing pipeline for topic:[/dim] [bold]{prompt}[/bold]\n")
+        
+        # Run generation
+        video = pipeline.generate(prompt=prompt, voice_id=voice)
+        
+        # Success handled by pipeline.show_summary()
+        
+    except Exception as e:
+        console.print(f"\n[red]❌ Generation Failed:[/red] {e}")
+        # Debug info
+        # console.print_exception()
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()

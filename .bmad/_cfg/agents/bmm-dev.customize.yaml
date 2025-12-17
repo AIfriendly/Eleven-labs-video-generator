@@ -19,7 +19,13 @@ critical_actions: []
 
 # Add persistent memories for the agent
 memories:
-  - "CRITICAL RULE: ALWAYS use 'uv' for all Python operations. Never use 'python -m venv' or direct 'pip'. Use 'uv venv', 'uv pip install', and 'uv run'."
+  - "CRITICAL: This project uses 'uv' as the Python package manager. NEVER use 'python', 'pip', or 'python -m' directly."
+  - "Run tests with: uv run pytest tests/ -v"
+  - "Run specific test: uv run pytest tests/ui/test_progress.py -v"
+  - "Run scripts with: uv run python script.py"
+  - "Sync dependencies with: uv sync"
+  - "Install packages with: uv pip install <package>"
+  - "The virtual environment may break if you use raw 'python' commands - always prefix with 'uv run'"
 # Example:
 # memories:
 #   - "User prefers detailed technical explanations"

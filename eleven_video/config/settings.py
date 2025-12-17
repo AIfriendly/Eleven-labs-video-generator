@@ -81,7 +81,8 @@ class _SettingsBase(BaseSettings):
     
     elevenlabs_api_key: SecretStr
     gemini_api_key: SecretStr
-    
+    project_root: str = "."
+
     @model_validator(mode="after")
     def validate_non_empty_keys(self) -> "_SettingsBase":
         """Ensure API keys are not empty strings."""

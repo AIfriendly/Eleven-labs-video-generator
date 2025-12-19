@@ -35,12 +35,13 @@ class VideoPipeline:
         if not self._compiler:
             self._compiler = FFmpegVideoCompiler()
 
-    def generate(self, prompt: str, voice_id: Optional[str] = None) -> Video:
+    def generate(self, prompt: str, voice_id: Optional[str] = None, image_model_id: Optional[str] = None) -> Video:
         """Run full pipeline.
         
         Args:
             prompt: Text topic.
             voice_id: Optional ElevenLabs voice ID.
+            image_model_id: Optional Gemini image model ID (Story 3.4).
         """
         self._init_adapters()
         # Ensure output directory exists
@@ -63,9 +64,9 @@ class VideoPipeline:
             )
             self.progress.complete_stage(PipelineStage.PROCESSING_AUDIO)
 
-            # 3. Images
+            # 3. Images (Pass image_model_id - Story 3.4)
             self.progress.start_stage(PipelineStage.PROCESSING_IMAGES)
-            images = self._gemini.generate_images(script, progress_callback=callback)
+            images = self._gemini.generate_images(script, progress_callback=callback, model_id=image_model_id)
             self.progress.complete_stage(PipelineStage.PROCESSING_IMAGES)
 
             # 4. Compile

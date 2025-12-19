@@ -288,6 +288,7 @@ def profile_delete_cmd(
 def generate(
     prompt: Optional[str] = typer.Option(None, "--prompt", "-p", help="Text prompt to generate video from"),
     voice: Optional[str] = typer.Option(None, "--voice", "-v", help="Voice ID to use"),
+    image_model: Optional[str] = typer.Option(None, "--image-model", "-m", help="Image model ID to use"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
     """
@@ -318,6 +319,34 @@ def generate(
         console.print(f"[red]Configuration Error:[/red] {e}")
         raise typer.Exit(1)
 
+    # Interactive voice selection if --voice not provided (Story 3.3)
+    if voice is None:
+        from eleven_video.ui.voice_selector import VoiceSelector
+        adapter = ElevenLabsAdapter(settings=settings)
+        try:
+            selector = VoiceSelector(adapter)
+            voice = selector.select_voice_interactive()
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Voice selection unavailable: {e}[/yellow]")
+            console.print("[dim]Continuing with default voice...[/dim]")
+            voice = None  # Graceful degradation
+        finally:
+            asyncio.run(adapter.close())
+
+    # Interactive image model selection if --image-model not provided (Story 3.4)
+    if image_model is None:
+        from eleven_video.ui.image_model_selector import ImageModelSelector
+        gemini_adapter = GeminiAdapter(settings=settings)
+        try:
+            selector = ImageModelSelector(gemini_adapter)
+            image_model = selector.select_model_interactive()
+        except Exception as e:
+            console.print(f"[yellow]⚠️ Image model selection unavailable: {e}[/yellow]")
+            console.print("[dim]Continuing with default image model...[/dim]")
+            image_model = None  # Graceful degradation
+        finally:
+            asyncio.run(gemini_adapter.close())
+
     # Initialize pipeline
     pipeline = VideoPipeline(
         settings=settings, 
@@ -327,8 +356,8 @@ def generate(
     try:
         console.print(f"\n[dim]Initializing pipeline for topic:[/dim] [bold]{prompt}[/bold]\n")
         
-        # Run generation
-        video = pipeline.generate(prompt=prompt, voice_id=voice)
+        # Run generation (pass image_model_id - Story 3.4)
+        video = pipeline.generate(prompt=prompt, voice_id=voice, image_model_id=image_model)
         
         # Success handled by pipeline.show_summary()
         

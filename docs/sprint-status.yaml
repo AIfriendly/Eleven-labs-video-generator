@@ -68,11 +68,11 @@ development_status:
   epic-2-retrospective: completed
 
   # Epic 3
-  epic-3: backlog
-  3-1-custom-voice-model-selection: backlog
-  3-2-custom-image-generation-model-selection: backlog
-  3-3-interactive-voice-selection-prompts: backlog
-  3-4-interactive-image-model-selection-prompts: backlog
+  epic-3: in-progress
+  3-1-custom-voice-model-selection: done
+  3-2-custom-image-generation-model-selection: done
+  3-3-interactive-voice-selection-prompts: done
+  3-4-interactive-image-model-selection-prompts: done
   3-5-gemini-text-generation-model-selection: backlog
   3-6-video-duration-selection: backlog
   3-7-gemini-model-preference-configuration: backlog

@@ -5,7 +5,8 @@ Implements ServiceHealth and SpeechGenerator protocols.
 Uses httpx for health/usage checks, elevenlabs SDK for TTS generation.
 """
 import time
-from typing import Optional, Callable, Any
+from datetime import datetime
+from typing import Optional, Callable, Any, Tuple
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -13,8 +14,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from elevenlabs import ElevenLabs
 
 from eleven_video.api.interfaces import HealthResult, UsageResult
-from eleven_video.models.domain import Audio
+from eleven_video.models.domain import Audio, VoiceInfo
+from eleven_video.models.quota import QuotaInfo
 from eleven_video.exceptions.custom_errors import ElevenLabsAPIError, ValidationError
+from eleven_video.monitoring.usage import UsageMonitor
 
 
 class ElevenLabsAdapter:
@@ -62,6 +65,9 @@ class ElevenLabsAdapter:
         
         self._client: Optional[httpx.AsyncClient] = None
         self._sdk_client: Optional[ElevenLabs] = None
+        # Voice cache: (voices_list, cache_timestamp)
+        self._voice_cache: Optional[Tuple[list[VoiceInfo], float]] = None
+        self._voice_cache_ttl: float = 60.0  # 60 second TTL
     
     @property
     def service_name(self) -> str:
@@ -179,18 +185,73 @@ class ElevenLabsAdapter:
                 raw_data=None
             )
     
+    async def get_quota_info(self) -> QuotaInfo:
+        """Get ElevenLabs character quota information (Story 5.4 - AC #1, #4).
+        
+        Uses HTTP client to fetch subscription data (same as get_usage).
+        Returns QuotaInfo with unavailable state on any error.
+        
+        Returns:
+            QuotaInfo with service quota details or unavailable state.
+        """
+        try:
+            # Use HTTP client for consistency with get_usage (which works correctly)
+            response = await self._fetch_subscription()
+            
+            if response.status_code != 200:
+                import logging
+                logging.getLogger(__name__).debug(
+                    f"Failed to fetch ElevenLabs quota: HTTP {response.status_code}"
+                )
+                return QuotaInfo(
+                    service="ElevenLabs",
+                    used=None,
+                    limit=None,
+                    unit="chars",
+                    reset_date=None
+                )
+            
+            data = response.json()
+            
+            # Extract reset date if available
+            reset_date = None
+            reset_unix = data.get('next_character_count_reset_unix')
+            if reset_unix:
+                reset_date = datetime.fromtimestamp(reset_unix)
+            
+            return QuotaInfo(
+                service="ElevenLabs",
+                used=data.get("character_count"),
+                limit=data.get("character_limit"),
+                unit="chars",
+                reset_date=reset_date
+            )
+        except Exception as e:
+            # AC #4: Fail gracefully - return unavailable state
+            import logging
+            logging.getLogger(__name__).debug(f"Failed to fetch ElevenLabs quota: {e}")
+            return QuotaInfo(
+                service="ElevenLabs",
+                used=None,
+                limit=None,
+                unit="chars",
+                reset_date=None
+            )
+    
     def generate_speech(
         self,
         text: str,
         voice_id: Optional[str] = None,
-        progress_callback: Optional[Callable[[str], None]] = None
+        progress_callback: Optional[Callable[[str], None]] = None,
+        warning_callback: Optional[Callable[[str], None]] = None
     ) -> Audio:
         """Generate audio from text using ElevenLabs TTS API.
         
         Args:
             text: The script text to convert to speech.
-            voice_id: Optional voice ID (uses Rachel default if not provided).
+            voice_id: Optional voice ID (uses default if not provided).
             progress_callback: Optional callback for progress updates.
+            warning_callback: Optional callback for warnings (e.g., invalid voice fallback).
             
         Returns:
             Audio domain model with generated audio bytes.
@@ -207,6 +268,19 @@ class ElevenLabsAdapter:
         if not text.strip():
             raise ValidationError("Text cannot be empty or whitespace-only")
         
+        # Story 3.1 AC3: Validate voice_id and fallback if invalid
+        effective_voice_id = self.DEFAULT_VOICE_ID
+        if voice_id:
+            if self.validate_voice_id(voice_id):
+                effective_voice_id = voice_id
+            else:
+                # Fallback to default with warning
+                if warning_callback:
+                    warning_callback(
+                        f"Invalid voice ID '{voice_id}' - falling back to default voice"
+                    )
+                effective_voice_id = self.DEFAULT_VOICE_ID
+        
         # AC3/FR23: Progress indicator
         if progress_callback:
             progress_callback("Generating audio...")
@@ -215,7 +289,7 @@ class ElevenLabsAdapter:
             # Use internal method with retry for actual API call
             result = self._generate_with_retry(
                 text=text,
-                voice_id=voice_id or self.DEFAULT_VOICE_ID
+                voice_id=effective_voice_id
             )
             
             if progress_callback:
@@ -262,6 +336,9 @@ class ElevenLabsAdapter:
         # Collect all bytes from iterator
         audio_bytes = b"".join(audio_iterator)
         
+        # Story 5.1/5.2: Report character usage to monitor (AC5 / Story 5.2 AC4)
+        self._report_character_usage(text, voice_id)
+        
         # AC6: Return Audio with file size for downstream processing
         # NOTE: duration_seconds requires mp3 parsing (e.g., mutagen library).
         # This can be added in a future story if needed for video timing calculations.
@@ -270,6 +347,28 @@ class ElevenLabsAdapter:
             duration_seconds=None,
             file_size_bytes=len(audio_bytes)
         )
+    
+    def _report_character_usage(self, text: str, voice_id: str) -> None:
+        """Report character usage to UsageMonitor (Story 5.1 AC5, Story 5.2 AC4).
+        
+        Args:
+            text: The text that was converted to speech.
+            voice_id: The voice ID used for generation (for by_model breakdown).
+        """
+        try:
+            monitor = UsageMonitor.get_instance()
+            # Story 5.2 AC4: Use voice_id as model_id for per-voice breakdown
+            monitor.track_usage(
+                service="elevenlabs",
+                model_id=voice_id,
+                metric_type="characters",
+                value=len(text)
+            )
+        except Exception as e:
+            # Never crash on usage tracking failure
+            # But log for debugging (Code Review Fix - Issue #7)
+            import logging
+            logging.getLogger(__name__).debug(f"Failed to report character usage: {e}")
     
     def _format_error(self, error: Exception) -> str:
         """Format error message without exposing API key (AC2).
@@ -300,6 +399,80 @@ class ElevenLabsAdapter:
             if self._api_key and self._api_key in sanitized:
                 sanitized = sanitized.replace(self._api_key, "[REDACTED]")
             return f"ElevenLabs API error: {sanitized}"
+    
+    def validate_voice_id(self, voice_id: str) -> bool:
+        """Check if a voice ID exists in the available voices (Story 3.1 - AC3).
+        
+        Uses cached voice list to avoid repeated API calls (60s TTL).
+        
+        Args:
+            voice_id: The voice ID to validate.
+            
+        Returns:
+            True if voice exists, False otherwise.
+        """
+        try:
+            voices = self.list_voices(use_cache=True)
+            return any(v.voice_id == voice_id for v in voices)
+        except ElevenLabsAPIError:
+            # If we can't get the voice list, assume invalid to be safe
+            return False
+    
+    def list_voices(self, use_cache: bool = False) -> list[VoiceInfo]:
+        """Get list of available voice models (Story 3.1 - AC4).
+        
+        Args:
+            use_cache: If True, return cached voices if available and not expired.
+        
+        Returns:
+            List of VoiceInfo domain models with voice metadata.
+            
+        Raises:
+            ElevenLabsAPIError: If API call fails.
+        """
+        # Check cache if requested
+        if use_cache and self._voice_cache is not None:
+            voices, cache_time = self._voice_cache
+            if time.perf_counter() - cache_time < self._voice_cache_ttl:
+                return voices
+        
+        try:
+            voices = self._list_voices_with_retry()
+            # Update cache
+            self._voice_cache = (voices, time.perf_counter())
+            return voices
+            
+        except Exception as e:
+            error_msg = self._format_error(e)
+            raise ElevenLabsAPIError(error_msg)
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((
+            ConnectionError,
+            TimeoutError,
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.RemoteProtocolError,
+        )),
+        reraise=True
+    )
+    def _list_voices_with_retry(self) -> list[VoiceInfo]:
+        """Internal method with retry logic for voice listing API calls."""
+        client = self._get_sdk_client()
+        response = client.voices.get_all()
+        
+        voices = []
+        for voice in response.voices:
+            voices.append(VoiceInfo(
+                voice_id=voice.voice_id,
+                name=voice.name,
+                category=getattr(voice, 'category', None),
+                preview_url=getattr(voice, 'preview_url', None)
+            ))
+        
+        return voices
     
     async def close(self):
         """Close the HTTP client."""

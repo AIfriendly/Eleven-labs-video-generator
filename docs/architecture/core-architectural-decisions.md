@@ -74,6 +74,43 @@
 - Rationale: Simple, accessible, and follows OS conventions for storing user preferences and non-sensitive configuration
 - Affects: Configuration management, user experience consistency
 
+## Default Preference Configuration (Story 3.7)
+
+**Pre-generation Default Preferences:**
+- Decision: Store user defaults for all interactive selectors in JSON config
+- Schema Extension:
+  ```json
+  {
+    "default_voice": "voice-id-string",
+    "default_image_model": "gemini-2.5-flash-image",
+    "default_gemini_model": "gemini-2.5-flash",
+    "default_duration": 5
+  }
+  ```
+- Rationale: Users should not be required to re-select preferences each video generation
+
+**Configuration Priority Hierarchy:**
+1. **CLI flags** (`--voice`, `--image-model`, `--gemini-model`, `--duration`) - Highest
+2. **JSON config defaults** - User preference
+3. **Hardcoded fallbacks** - System defaults
+
+**Interactive Override (`--interactive` / `-i` flag):**
+- Decision: Add `-i` flag to force all interactive prompts regardless of configured defaults
+- Behavior Matrix:
+  | Defaults Configured | `-i` Flag | Behavior |
+  |---------------------|-----------|----------|
+  | Yes | No | Use defaults silently |
+  | Yes | Yes | Show all interactive prompts |
+  | No | No | Show all interactive prompts |
+  | No | Yes | Show all interactive prompts |
+- Rationale: Provides user control over when to use saved defaults vs. make fresh selections
+
+**Affected Components:**
+- `eleven_video/config/persistence.py` - Extend save/load for new fields
+- `eleven_video/config/settings.py` - Add default preference fields
+- `eleven_video/main.py` - Add `-i` flag, load defaults in `generate()` command
+- `eleven_video/ui/*_selector.py` - Accept configured default for display
+
 ## Authentication & Security
 
 **API Key Management:**

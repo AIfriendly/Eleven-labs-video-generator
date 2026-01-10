@@ -13,9 +13,9 @@ import pytest
 from unittest.mock import MagicMock, patch, call
 from pathlib import Path
 
-# Assuming test data factories are in a shared conftest.py or similar
-# For this example, they are duplicated for clarity.
+# Local factory functions for test data (kept local due to pytest conftest import complexity)
 def create_test_image(size_bytes: int = 1000):
+    """Factory function for creating test Image objects."""
     from eleven_video.models.domain import Image
     return Image(
         data=b"\x89PNG\r\n\x1a\n" + b"\x00" * size_bytes,
@@ -23,10 +23,14 @@ def create_test_image(size_bytes: int = 1000):
         file_size_bytes=size_bytes + 8
     )
 
+
 def create_test_images(count: int = 3):
+    """Create a list of test Image objects."""
     return [create_test_image() for _ in range(count)]
 
+
 def create_test_audio(duration: float = 10.0):
+    """Factory function for creating test Audio objects."""
     from eleven_video.models.domain import Audio
     return Audio(
         data=b"\xff\xfb\x90\x00" + b"\x00" * 100,
@@ -40,8 +44,8 @@ def mock_moviepy_zoom():
     Fixture providing mocked moviepy for zoom effect unit tests.
     Extends the base mock by adding a mock for the 'fl' (frame-level) method.
     """
-    with patch("eleven_video.processing.video_handler.ImageClip") as mock_image_clip,
-         patch("eleven_video.processing.video_handler.AudioFileClip") as mock_audio_clip,
+    with patch("eleven_video.processing.video_handler.ImageClip") as mock_image_clip, \
+         patch("eleven_video.processing.video_handler.AudioFileClip") as mock_audio_clip, \
          patch("eleven_video.processing.video_handler.concatenate_videoclips") as mock_concat:
         
         mock_clip = MagicMock()
@@ -151,8 +155,10 @@ class TestZoomEffect:
         from eleven_video.processing.video_handler import FFmpegVideoCompiler
 
         compiler = FFmpegVideoCompiler()
-        # Make the mocked zoom effect raise an error
-        compiler._apply_zoom_effect = MagicMock(side_effect=Exception("Zoom failed"))
+        # Make the mocked zoom effect raise an error with correct signature
+        def failing_zoom(clip, direction, target_resolution=(1920, 1080)):
+            raise Exception("Zoom failed")
+        compiler._apply_zoom_effect = MagicMock(side_effect=failing_zoom)
         
         image_paths = ["img1.png", "img2.png"]
         progress_updates = []

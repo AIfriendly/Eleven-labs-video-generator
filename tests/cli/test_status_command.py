@@ -49,10 +49,19 @@ def _create_mock_settings():
 
 def _create_mock_adapter(service_name, health_result, usage_result):
     """Create a mock adapter with predefined health and usage results."""
+    from eleven_video.models.quota import QuotaInfo
     mock_adapter = MagicMock()
     mock_adapter.service_name = service_name
     mock_adapter.check_health = AsyncMock(return_value=health_result)
     mock_adapter.get_usage = AsyncMock(return_value=usage_result)
+    # Story 5.4: Add get_quota_info mock
+    mock_adapter.get_quota_info = AsyncMock(return_value=QuotaInfo(
+        service=service_name,
+        used=usage_result.used,
+        limit=usage_result.limit,
+        unit=usage_result.unit or "chars",
+        reset_date=None
+    ))
     mock_adapter.close = AsyncMock()
     return mock_adapter
 

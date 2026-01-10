@@ -193,6 +193,110 @@ The project leverages existing AI APIs (Eleven Labs for TTS and sound effects; G
   - **Quality:** High-quality neural voices comparable to ElevenLabs
   - **Integration:** Official Python SDK (`google-cloud-texttospeech`)
   - **Setup:** Requires Google Cloud service account credentials
+- **Gemini Flash TTS** - Cost-effective alternative TTS via Gemini API (identified Dec 2025):
+  - **Pricing:** $0.50/M input tokens (text), $10.00/M output tokens (audio)
+  - **Cost per minute:** ~$0.015/min audio (~1/20th the cost of ElevenLabs)
+  - **Free Tier:** ~1,000 monthly requests via API free tier
+  - **Integration:** Same google-genai SDK already used for script/image generation
+  - **Trade-off:** Lower cost vs ElevenLabs premium voice quality
+
+- **Mobile App Production Deployment** - Transform CLI tool into consumer mobile application:
+
+  **Architecture Overview:**
+  The CLI tool transitions to a 3-tier architecture for mobile deployment:
+  ```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Mobile App (Flutter)                                           │
+  │  • UI screens, video player, user auth                         │
+  │  • Communicates with backend via HTTPS                         │
+  │  • Available on Google Play Store and Apple App Store          │
+  └───────────────────────────┬─────────────────────────────────────┘
+                              │ HTTPS API calls
+                              ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Backend API Server (Python FastAPI on Railway)                 │
+  │  • Wraps existing VideoPipeline orchestrator                   │
+  │  • Manages API keys securely (never exposed to app)            │
+  │  • Handles video generation, storage, user quotas              │
+  └───────────────────────────┬─────────────────────────────────────┘
+                              │
+                              ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  External Services                                              │
+  │  • ElevenLabs (TTS) • Gemini (script/images) • Cloudflare R2   │
+  └─────────────────────────────────────────────────────────────────┘
+  ```
+
+  **Technology Stack:**
+  | Component | Technology | Purpose | Cost |
+  |-----------|------------|---------|------|
+  | Mobile App | Flutter (Dart) | Cross-platform iOS/Android | Free |
+  | Backend | FastAPI (Python) | API wrapper for VideoPipeline | Railway $10-20/mo or DigitalOcean $6-12/mo |
+  | Database | Supabase (Postgres) | Users, quotas, subscriptions | Free tier |
+  | File Storage | Cloudflare R2 | Generated videos | Free tier |
+  | Auth | Supabase Auth | User accounts, social login | Free tier |
+  | Payments | RevenueCat | App Store/Play Store subscriptions | Free under $2.5K MRR |
+  | Video Processing | FFmpeg | Server-side compilation | Included in backend |
+
+  **Hosting Options:**
+  | Provider | Type | Cost | Best For |
+  |----------|------|------|----------|
+  | Railway | Managed PaaS | $5-20/mo | Easiest setup, auto-scaling |
+  | DigitalOcean Droplet | VPS | $6-12/mo | Full control, cheaper at scale |
+  | DigitalOcean App Platform | Managed | $5/mo+ | Middle ground |
+  | Coolify + VPS | Self-hosted | $5-10/mo | Maximum control, cheapest |
+
+  **Monetization: Two-Tier Pricing Model**
+  | Tier | Price | Videos/Month | Max Duration | Features |
+  |------|-------|--------------|--------------|----------|
+  | **Free** | $0 | 4 | 30 seconds | Watermark, basic voices |
+  | **Pro** | $30/month | 4 | 5 minutes | No watermark, all voices, priority |
+
+  **Target Market:** YouTube content creators seeking affordable AI video generation
+  - Free tier captures social media users (TikTok, Reels, Shorts)
+  - Pro tier serves YouTube creators needing longer content
+
+  **Unit Economics:**
+  | Tier | Revenue | Platform Fee (15%) | Net | API Cost | Profit |
+  |------|---------|-------------------|-----|----------|--------|
+  | Free | $0 | - | $0 | ~$0 | $0 |
+  | Pro | $30 | -$4.50 | $25.50 | ~$14 | ~$11 (37%) |
+
+  **Break-even:** 2 paying Pro users covers fixed costs
+
+  **API Cost Management:**
+  - ElevenLabs: Subscription-based (shared pool across all users)
+  - Gemini: Pay-as-you-go (~$3/video for images + script)
+  - Google Cloud budget caps prevent overspending
+  - Free tier uses Gemini free quota (1,500 req/day, 1,000 images/mo)
+
+  **ElevenLabs Scaling Strategy:**
+  | Revenue Milestone | Plan | Cost | Capacity | Trigger |
+  |-------------------|------|------|----------|---------|
+  | Testing only | Starter | $5/mo | 30K chars | Before launch |
+  | First paying user | Creator | $22/mo | 100K chars | Revenue > $0 |
+  | Growing (30+ users) | Pro | $99/mo | 500K chars | Revenue > $1K/mo |
+  | Scale (150+ users) | Scale | $330/mo | 2M chars | Revenue > $4K/mo |
+
+  **Platform Deployment Strategy:**
+
+  *Phase 1: Google Play Store (Android First)*
+  - Registration: $25 one-time fee
+  - Account Type: Organization (bypasses 20-tester requirement)
+  - Tech: Flutter builds to Android .aab
+
+  *Phase 2: Apple App Store (iOS)*
+  - Registration: $99/year developer program
+  - Tech: Same Flutter codebase, different build target
+  - Backend: Same API serves both platforms
+
+  **Key Implementation Notes:**
+  - One Flutter codebase → builds to both Android and iOS
+  - One Python backend → serves all mobile app users
+  - RevenueCat SDK → handles subscriptions for both stores
+  - API keys stay server-side → never exposed in mobile app
+  - Usage tracking stored in Supabase → decrements on each generation
+  - Monthly quota resets via scheduled function
 
 ## User Journeys
 
@@ -392,6 +496,7 @@ The implementation will follow interactive terminal design patterns and user exp
 
 - FR15: Users can interact with the system through an interactive terminal interface
 - FR16: Users can initiate video creation through an interactive terminal session
+- FR16.1: Users can force interactive prompts with the `--interactive` or `-i` flag, overriding configured defaults
 - FR17: Users can select from available voice options through interactive prompts
 - FR18: Users can select from available image models through interactive prompts
 - FR19: Users can select from available Gemini text generation models through interactive prompts
@@ -406,6 +511,9 @@ The implementation will follow interactive terminal design patterns and user exp
 
 - FR25: Users can configure default settings that persist between sessions
 - FR25.1: Users can configure default Gemini text generation model preferences
+- FR25.2: Users can configure default image generation model preferences
+- FR25.3: Users can configure default voice model preferences
+- FR25.4: Users can configure default video duration preferences
 - FR26: The system can store user preferences in a configuration file
 - FR27: Users can manage multiple API key profiles
 - FR28: Users can set environment variables for API keys

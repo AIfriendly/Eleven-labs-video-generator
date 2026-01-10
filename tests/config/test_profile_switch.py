@@ -77,9 +77,10 @@ class TestProfileSwitch:
         
         from eleven_video.config.settings import Settings
         
-        # Mock the profile functions to return our test config
+        # Mock the profile functions to return our test config AND clear environment variables
         with patch("eleven_video.config.persistence.list_profiles") as mock_list, \
-             patch("eleven_video.config.persistence.get_active_profile") as mock_active:
+             patch("eleven_video.config.persistence.get_active_profile") as mock_active, \
+             patch.dict('os.environ', {}, clear=True):  # Clear real environment variables
             mock_active.return_value = "prod"
             mock_list.return_value = {"prod": str(env_prod)}
             

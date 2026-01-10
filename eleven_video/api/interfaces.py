@@ -9,7 +9,7 @@ from typing import Protocol, runtime_checkable, Optional, Any, Callable, TYPE_CH
 from pathlib import Path
 
 if TYPE_CHECKING:
-    from eleven_video.models.domain import Script, Audio, Image, Video
+    from eleven_video.models.domain import Script, Audio, Image, Video, VoiceInfo, ImageModelInfo
 
 
 @dataclass
@@ -115,7 +115,8 @@ class SpeechGenerator(Protocol):
         self,
         text: str,
         voice_id: Optional[str] = None,
-        progress_callback: "Optional[Callable[[str], None]]" = None
+        progress_callback: "Optional[Callable[[str], None]]" = None,
+        warning_callback: "Optional[Callable[[str], None]]" = None
     ) -> "Audio":
         """Generate audio from text using TTS API.
         
@@ -123,6 +124,7 @@ class SpeechGenerator(Protocol):
             text: The script text to convert to speech.
             voice_id: Optional voice ID (uses default if not provided).
             progress_callback: Optional callback for progress updates.
+            warning_callback: Optional callback for warnings (e.g., invalid voice fallback).
             
         Returns:
             Audio domain model with generated audio bytes.
@@ -136,7 +138,7 @@ class SpeechGenerator(Protocol):
 
 @runtime_checkable
 class ImageGenerator(Protocol):
-    """Protocol for image generation from script (Story 2.3).
+    """Protocol for image generation from script (Story 2.3, updated Story 3.2).
     
     Implementations must generate images from script content using
     an AI image generation service (e.g., Google Gemini Nano Banana).
@@ -145,13 +147,17 @@ class ImageGenerator(Protocol):
     def generate_images(
         self,
         script: "Script",
-        progress_callback: "Optional[Callable[[str], None]]" = None
+        progress_callback: "Optional[Callable[[str], None]]" = None,
+        model_id: Optional[str] = None,
+        warning_callback: "Optional[Callable[[str], None]]" = None
     ) -> "List[Image]":
         """Generate images from script content.
         
         Args:
             script: The Script domain model to generate images for.
             progress_callback: Optional callback with format "Generating image X of Y".
+            model_id: Optional image model ID (uses default if not provided).
+            warning_callback: Optional callback for warnings (e.g., invalid model fallback).
             
         Returns:
             List of Image domain models with bytes and metadata.
@@ -196,3 +202,44 @@ class VideoCompiler(Protocol):
         ...
 
 
+@runtime_checkable
+class VoiceLister(Protocol):
+    """Protocol for listing available voices from TTS service (Story 3.1 - AC4).
+    
+    Implementations must retrieve available voice models from the TTS provider
+    and return them as VoiceInfo domain models.
+    """
+    
+    def list_voices(self) -> "List[VoiceInfo]":
+        """Get list of available voice models.
+        
+        Returns:
+            List of VoiceInfo domain models with voice metadata.
+            
+        Raises:
+            ElevenLabsAPIError: If API call fails.
+        """
+        ...
+
+
+@runtime_checkable
+class ImageModelLister(Protocol):
+    """Protocol for listing available image models from Gemini service (Story 3.2 - AC4).
+    
+    Implementations must retrieve available image generation models from the AI provider
+    and return them as ImageModelInfo domain models.
+    """
+    
+    def list_image_models(self, use_cache: bool = False) -> "List[ImageModelInfo]":
+        """Get list of available image generation models.
+        
+        Args:
+            use_cache: If True, return cached models if available and not expired.
+        
+        Returns:
+            List of ImageModelInfo domain models with model metadata.
+            
+        Raises:
+            GeminiAPIError: If API call fails.
+        """
+        ...

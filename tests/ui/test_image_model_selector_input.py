@@ -167,20 +167,29 @@ class TestImageModelSelectorNonTTY:
 class TestImageModelSelectorEdgeCases:
     """Tests for edge case input handling to expand coverage."""
 
-    def test_select_model_handles_negative_number(self, image_model_selector, single_image_model):
-        """[P2] [3.4-AUTO-001] Negative number input falls back to default.
+    @pytest.mark.parametrize("invalid_input,description", [
+        ("-1", "negative number"),
+        ("9999", "very large number out of range"),
+        ("abc", "non-numeric text input"),
+        ("!@#$%", "special characters"),
+        ("1.5", "decimal number"),
+        ("  ", "whitespace only"),
+    ])
+    def test_select_model_handles_invalid_input(self, image_model_selector, single_image_model, invalid_input, description):
+        """[P2] [3.4-AUTO-001-004] Invalid inputs should all fall back to default.
         
-        Edge case: User enters a negative number like -1.
+        Edge cases: negative numbers, large numbers, non-numeric, special chars.
+        Parametrized for comprehensive coverage with minimal code duplication.
         """
         # Given: An ImageModelSelector with models
-        # When: User enters negative number
+        # When: User enters invalid input ({description})
         with patch("eleven_video.ui.image_model_selector.Prompt") as mock_prompt:
             with patch("eleven_video.ui.image_model_selector.console"):
-                mock_prompt.ask.return_value = "-1"
+                mock_prompt.ask.return_value = invalid_input
                 result = image_model_selector._get_user_selection(single_image_model)
         
-        # Then: Should return None (default)
-        assert result is None
+        # Then: Should return None (default) gracefully
+        assert result is None, f"Expected None for {description} input '{invalid_input}'"
 
     def test_select_model_handles_empty_input(self, image_model_selector, single_image_model):
         """[P2] [3.4-AUTO-002] Empty string input uses default (via Rich default).
@@ -194,36 +203,6 @@ class TestImageModelSelectorEdgeCases:
             result = image_model_selector._get_user_selection(single_image_model)
         
         # Then: Should return None (use default model)
-        assert result is None
-
-    def test_select_model_handles_very_large_number(self, image_model_selector, single_image_model):
-        """[P2] [3.4-AUTO-003] Very large number falls back to default.
-        
-        Edge case: User enters a number much larger than model count.
-        """
-        # Given: An ImageModelSelector with a few models
-        # When: User enters very large number
-        with patch("eleven_video.ui.image_model_selector.Prompt") as mock_prompt:
-            with patch("eleven_video.ui.image_model_selector.console"):
-                mock_prompt.ask.return_value = "9999"
-                result = image_model_selector._get_user_selection(single_image_model)
-        
-        # Then: Should return None (default)
-        assert result is None
-
-    def test_select_model_handles_special_characters(self, image_model_selector, single_image_model):
-        """[P2] [3.4-AUTO-004] Special character input falls back to default.
-        
-        Edge case: User enters special characters like !@#$%.
-        """
-        # Given: An ImageModelSelector with models
-        # When: User enters special characters
-        with patch("eleven_video.ui.image_model_selector.Prompt") as mock_prompt:
-            with patch("eleven_video.ui.image_model_selector.console"):
-                mock_prompt.ask.return_value = "!@#$%"
-                result = image_model_selector._get_user_selection(single_image_model)
-        
-        # Then: Should return None (default) gracefully
         assert result is None
 
     def test_select_last_model_in_list(self, image_model_selector):

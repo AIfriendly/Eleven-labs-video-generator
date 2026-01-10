@@ -4,6 +4,8 @@ from rich.panel import Panel
 from rich.table import Table
 import asyncio
 import json
+import os
+
 
 from pathlib import Path
 from typing import Optional
@@ -64,11 +66,28 @@ def main(
 @app.command()
 def setup():
     """
-    Interactive setup wizard to configure default settings.
+    Run interactive setup wizard.
     
-    Guides you through configuration options and saves preferences
-    to a JSON file in your OS-standard config directory.
+    Configures API keys (saved to .env) and default preferences
+    (saved to config.json in user config dir).
     """
+    console.print(Panel.fit("Eleven Video Setup", style="bold blue"))
+    
+    # Show config location immediately (Fixes Review Issue #3)
+    config_dir = get_config_path().parent
+    console.print(f"[dim]Configuration will be saved to: {config_dir}[/dim]\n")
+
+    # Check for existing .env
+    if os.path.exists(".env"):
+        console.print(Panel(
+            "[yellow]⚠️  Existing .env file detected.[/yellow]\n\n"
+            "This setup wizard will [bold]NOT[/bold] modify your .env file.\n"
+            "Please ensure your API keys are correctly set in your .env file or environment variables.",
+            border_style="yellow",
+            title=".env Detected"
+        ))
+        console.print()
+
     console.print(Panel.fit(
         "[bold cyan]Eleven Video Setup Wizard[/bold cyan]\n"
         "Configure your default settings",
@@ -93,17 +112,42 @@ def setup():
     existing_config = load_config()
     
     # Prompt for configuration options
-    console.print("[bold]Configure Default Settings[/bold]\n")
+    console.print("[bold]Configure Default Preferences[/bold]\n")
     
-    # Default voice setting
+    # 1. Default voice ID (Story 3.7)
     current_voice = existing_config.get("default_voice", "")
-    default_voice_prompt = f" [{current_voice}]" if current_voice else ""
+    display_voice = current_voice if current_voice else "none"
     default_voice = Prompt.ask(
-        f"Default voice ID{default_voice_prompt}",
-        default=current_voice if current_voice else None
+        f"Default voice ID [{display_voice}]",
+        default=current_voice if current_voice else ""
     )
     
-    # Default output format
+    # 2. Default image model (Story 3.7)
+    current_image_model = existing_config.get("default_image_model", "")
+    display_image_model = current_image_model if current_image_model else "gemini-2.0-flash-preview-image-generation"
+    default_image_model = Prompt.ask(
+        f"Default image model [{display_image_model}]",
+        default=current_image_model if current_image_model else "gemini-2.0-flash-preview-image-generation"
+    )
+    
+    # 3. Default Gemini text model (Story 3.7)
+    current_gemini_model = existing_config.get("default_gemini_model", "")
+    display_gemini_model = current_gemini_model if current_gemini_model else "gemini-2.5-flash"
+    default_gemini_model = Prompt.ask(
+        f"Default Gemini model [{display_gemini_model}]",
+        default=current_gemini_model if current_gemini_model else "gemini-2.5-flash"
+    )
+    
+    # 4. Default duration in minutes (Story 3.7 - updated from seconds)
+    current_duration_minutes = existing_config.get("default_duration_minutes", 5)
+    duration_str = Prompt.ask(
+        f"Default video duration in minutes (3, 5, or 10) [{current_duration_minutes}]",
+        default=str(current_duration_minutes),
+        choices=["3", "5", "10"]
+    )
+    default_duration_minutes = int(duration_str)
+    
+    # 5. Default output format (existing)
     current_format = existing_config.get("output_format", "mp4")
     output_format = Prompt.ask(
         f"Default output format",
@@ -111,22 +155,13 @@ def setup():
         choices=["mp4", "mov", "avi", "webm"]
     )
     
-    # Default video duration
-    current_duration = existing_config.get("default_duration", 30)
-    duration_str = Prompt.ask(
-        f"Default video duration (seconds)",
-        default=str(current_duration)
-    )
-    try:
-        default_duration = int(duration_str)
-    except ValueError:
-        default_duration = 30
-    
-    # Build new config
+    # Build new config with all Story 3.7 fields
     new_config = {
         "default_voice": default_voice or "",
+        "default_image_model": default_image_model,
+        "default_gemini_model": default_gemini_model,
+        "default_duration_minutes": default_duration_minutes,
         "output_format": output_format,
-        "default_duration": default_duration,
     }
     
     # Save configuration (AC4)
@@ -180,11 +215,14 @@ def status(
         """Check a single service and return result dict."""
         health = await adapter.check_health()
         usage = await adapter.get_usage()
+        # Story 5.4: Also fetch quota info
+        quota = await adapter.get_quota_info()
         await adapter.close()
         return {
             "service_name": adapter.service_name,
             "health": health,
-            "usage": usage
+            "usage": usage,
+            "quota": quota
         }
 
     async def check_all_services():
@@ -200,6 +238,14 @@ def status(
         print(json.dumps(output_data, indent=2))
     else:
         render_status_table(services)
+        
+        # Story 5.4: Display quota information using QuotaDisplay
+        from eleven_video.ui.quota_display import QuotaDisplay
+        quotas = [svc["quota"] for svc in services if svc.get("quota")]
+        if quotas:
+            console.print()  # Add spacing
+            quota_display = QuotaDisplay(quotas)
+            console.print(quota_display)
 
 
 # =============================================================================
@@ -289,7 +335,11 @@ def generate(
     prompt: Optional[str] = typer.Option(None, "--prompt", "-p", help="Text prompt to generate video from"),
     voice: Optional[str] = typer.Option(None, "--voice", "-v", help="Voice ID to use"),
     image_model: Optional[str] = typer.Option(None, "--image-model", "-m", help="Image model ID to use"),
+    gemini_model: Optional[str] = typer.Option(None, "--gemini-model", help="Gemini text model ID to use (no short option due to -g conflict)"),
+    duration: Optional[int] = typer.Option(None, "--duration", "-d", help="Target video duration in minutes"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
+    resolution: Optional[str] = typer.Option(None, "--resolution", "-r", help="Output resolution (1080p, 720p, portrait, square)"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Force all interactive prompts even with defaults configured"),
 ):
     """
     Generate an AI video from a prompt.
@@ -299,8 +349,62 @@ def generate(
     2. Converts script to audio (ElevenLabs).
     3. Generates visuals for each scene (Gemini).
     4. Compiles everything into a final video (FFmpeg).
+    
+    Use --interactive / -i to force interactive prompts even when defaults are configured.
     """
     from eleven_video.orchestrator import VideoPipeline
+
+    # VALIDATION (Story 3.6 - Task 6.2)
+    if duration is not None and duration not in [3, 5, 10]:
+        console.print(f"[red]Invalid duration: {duration}. Must be 3, 5, or 10 minutes.[/red]")
+        raise typer.Exit(1)
+
+    # Story 3.7: Load config defaults for priority hierarchy
+    config = load_config()
+    default_voice = config.get("default_voice")
+    default_image_model = config.get("default_image_model")
+    default_gemini_model = config.get("default_gemini_model")
+    default_duration_minutes = config.get("default_duration_minutes")
+    
+    # Treat empty strings as None (not configured)
+    if default_voice and not default_voice.strip():
+        default_voice = None
+    if default_image_model and not default_image_model.strip():
+        default_image_model = None
+    if default_gemini_model and not default_gemini_model.strip():
+        default_gemini_model = None
+    
+    # Check if we're in a TTY (can show interactive prompts)
+    is_tty = console.is_terminal
+    
+    # Story 3.7: Apply priority hierarchy
+    # Priority: CLI flags > config defaults > interactive prompts
+    # If -i flag is set, force interactive even if defaults exist
+    
+    # Voice priority
+    if voice is None:
+        if default_voice and not interactive:
+            voice = default_voice
+            console.print(f"[dim]Using default voice: {voice}[/dim]")
+        # else: will trigger interactive selection below
+    
+    # Image model priority
+    if image_model is None:
+        if default_image_model and not interactive:
+            image_model = default_image_model
+            console.print(f"[dim]Using default image model: {image_model}[/dim]")
+    
+    # Gemini model priority
+    if gemini_model is None:
+        if default_gemini_model and not interactive:
+            gemini_model = default_gemini_model
+            console.print(f"[dim]Using default Gemini model: {gemini_model}[/dim]")
+    
+    # Duration priority
+    if duration is None:
+        if default_duration_minutes and not interactive:
+            duration = default_duration_minutes
+            console.print(f"[dim]Using default duration: {duration} minutes[/dim]")
 
     # Interactive prompt if not provided
     if not prompt:
@@ -309,6 +413,21 @@ def generate(
             "Generate a video from a text topic.",
             border_style="cyan"
         ))
+        
+        # Interactive Duration Selection (Story 3.6)
+        # Only if still None and we're in a TTY
+        if duration is None and is_tty:
+            from eleven_video.ui.duration_selector import DurationSelector
+            try:
+                selector = DurationSelector()
+                duration = selector.select_duration_interactive()
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Duration selection error: {e}[/yellow]")
+        elif duration is None and not is_tty:
+            # R-004: Non-TTY fallback
+            duration = 5  # Hardcoded fallback
+            console.print("[dim]Non-interactive mode: using 5 minute default[/dim]")
+        
         prompt = Prompt.ask("[bold green]Enter your video topic/prompt[/bold green]")
     
     # Load settings (respecting profile override)
@@ -319,33 +438,97 @@ def generate(
         console.print(f"[red]Configuration Error:[/red] {e}")
         raise typer.Exit(1)
 
-    # Interactive voice selection if --voice not provided (Story 3.3)
+    # Interactive voice selection if still None and in TTY (Story 3.3)
     if voice is None:
-        from eleven_video.ui.voice_selector import VoiceSelector
-        adapter = ElevenLabsAdapter(settings=settings)
-        try:
-            selector = VoiceSelector(adapter)
-            voice = selector.select_voice_interactive()
-        except Exception as e:
-            console.print(f"[yellow]⚠️ Voice selection unavailable: {e}[/yellow]")
-            console.print("[dim]Continuing with default voice...[/dim]")
-            voice = None  # Graceful degradation
-        finally:
-            asyncio.run(adapter.close())
+        if is_tty:
+            from eleven_video.ui.voice_selector import VoiceSelector
+            adapter = ElevenLabsAdapter(settings=settings)
+            try:
+                selector = VoiceSelector(adapter)
+                voice = selector.select_voice_interactive()
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Voice selection unavailable: {e}[/yellow]")
+                console.print("[dim]Continuing with default voice...[/dim]")
+                voice = None  # Graceful degradation
+            finally:
+                asyncio.run(adapter.close())
+        else:
+            # R-004: Non-TTY - voice remains None (pipeline will use its default)
+            console.print("[dim]Non-interactive mode: using default voice[/dim]")
 
-    # Interactive image model selection if --image-model not provided (Story 3.4)
+    # Interactive Gemini model selection if still None and in TTY (Story 3.5)
+    if gemini_model is None:
+        if is_tty:
+            from eleven_video.ui.gemini_model_selector import GeminiModelSelector
+            gemini_adapter = GeminiAdapter(settings=settings)
+            try:
+                selector = GeminiModelSelector(gemini_adapter)
+                gemini_model = selector.select_model_interactive()
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Gemini model selection unavailable: {e}[/yellow]")
+                console.print("[dim]Continuing with default Gemini model...[/dim]")
+                gemini_model = None  # Graceful degradation
+            finally:
+                asyncio.run(gemini_adapter.close())
+        else:
+            # R-004: Non-TTY fallback
+            console.print("[dim]Non-interactive mode: using default Gemini model[/dim]")
+
+    # Interactive image model selection if still None and in TTY (Story 3.4)
     if image_model is None:
-        from eleven_video.ui.image_model_selector import ImageModelSelector
-        gemini_adapter = GeminiAdapter(settings=settings)
+        if is_tty:
+            from eleven_video.ui.image_model_selector import ImageModelSelector
+            gemini_adapter = GeminiAdapter(settings=settings)
+            try:
+                selector = ImageModelSelector(gemini_adapter)
+                image_model = selector.select_model_interactive()
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Image model selection unavailable: {e}[/yellow]")
+                console.print("[dim]Continuing with default image model...[/dim]")
+                image_model = None  # Graceful degradation
+            finally:
+                asyncio.run(gemini_adapter.close())
+        else:
+            console.print("[dim]Non-interactive mode: using default image model[/dim]")
+
+    # Resolution selection (Story 3.8)
+    from eleven_video.models.domain import Resolution
+    selected_resolution = None
+    
+    if resolution:
+        # 1. CLI Flag
         try:
-            selector = ImageModelSelector(gemini_adapter)
-            image_model = selector.select_model_interactive()
-        except Exception as e:
-            console.print(f"[yellow]⚠️ Image model selection unavailable: {e}[/yellow]")
-            console.print("[dim]Continuing with default image model...[/dim]")
-            image_model = None  # Graceful degradation
-        finally:
-            asyncio.run(gemini_adapter.close())
+            res_key = resolution.lower().strip()
+            # Handle aliases
+            if "1080" in res_key: res_key = "1080p"
+            elif "720" in res_key: res_key = "720p"
+            
+            resolution_map = {
+                "1080p": Resolution.HD_1080P,
+                "720p": Resolution.HD_720P,
+                "portrait": Resolution.PORTRAIT,
+                "square": Resolution.SQUARE
+            }
+            
+            if res_key not in resolution_map:
+                raise KeyError(res_key)
+            selected_resolution = resolution_map[res_key]
+            console.print(f"[dim]Using resolution: {selected_resolution.value['label']}[/dim]")
+        except KeyError:
+            console.print(f"[red]Invalid resolution: {resolution}. Options: 1080p, 720p, portrait, square[/red]")
+            raise typer.Exit(1)
+            
+    # 2. Interactive Selection (if no flag)
+    if selected_resolution is None:
+        if is_tty:
+            from eleven_video.ui.resolution_selector import ResolutionSelector
+            selector = ResolutionSelector()
+            # Interactive prompt defaults to 1080p inside selector if skipped
+            selected_resolution = selector.select_resolution(interactive=True)
+        else:
+            # Non-TTY fallback
+            selected_resolution = Resolution.HD_1080P
+            console.print("[dim]Non-interactive mode: using default 1080p resolution[/dim]")
 
     # Initialize pipeline
     pipeline = VideoPipeline(
@@ -356,8 +539,15 @@ def generate(
     try:
         console.print(f"\n[dim]Initializing pipeline for topic:[/dim] [bold]{prompt}[/bold]\n")
         
-        # Run generation (pass image_model_id - Story 3.4)
-        video = pipeline.generate(prompt=prompt, voice_id=voice, image_model_id=image_model)
+        # Run generation (pass model IDs - Story 3.4, 3.5)
+        video = pipeline.generate(
+            prompt=prompt, 
+            voice_id=voice, 
+            image_model_id=image_model,
+            gemini_model_id=gemini_model,
+            duration_minutes=duration,
+            resolution=selected_resolution
+        )
         
         # Success handled by pipeline.show_summary()
         

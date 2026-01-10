@@ -4,7 +4,7 @@ Fixtures package for Epic 2 API testing.
 Provides mock responses for ElevenLabs and Gemini APIs to enable offline testing.
 """
 
-from tests.fixtures.api_fixtures import (
+from .api_fixtures import (
     mock_elevenlabs_tts,
     mock_elevenlabs_voices,
     mock_elevenlabs_user,

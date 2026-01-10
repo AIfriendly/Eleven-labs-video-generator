@@ -111,11 +111,11 @@ class TestTTSGenerationSuccess:
 
     def test_generate_speech_uses_default_voice(self, mock_elevenlabs_sdk):
         """
-        [2.2-UNIT-003] AC1: Default voice Rachel is used.
+        [2.2-UNIT-003] AC1: Default voice is used.
         
         GIVEN no voice specified
         WHEN generating speech
-        THEN default voice ID 21m00Tcm4TlvDq8ikWAM is used.
+        THEN default voice ID is used.
         """
         from eleven_video.api.elevenlabs import ElevenLabsAdapter
         
@@ -125,7 +125,7 @@ class TestTTSGenerationSuccess:
         adapter.generate_speech("Test script")
         
         call_kwargs = mock_client.text_to_speech.convert.call_args.kwargs
-        assert call_kwargs.get("voice_id") == "21m00Tcm4TlvDq8ikWAM"
+        assert call_kwargs.get("voice_id") == ElevenLabsAdapter.DEFAULT_VOICE_ID
 
     def test_generate_speech_uses_custom_voice(self, mock_elevenlabs_sdk):
         """
@@ -134,6 +134,9 @@ class TestTTSGenerationSuccess:
         GIVEN a custom voice_id is specified
         WHEN generating speech
         THEN the custom voice ID is passed to the SDK.
+        
+        Note: Story 3.1 added voice validation - we mock validate_voice_id 
+        to return True so the test focuses on custom voice passthrough.
         """
         from eleven_video.api.elevenlabs import ElevenLabsAdapter
         
@@ -141,7 +144,10 @@ class TestTTSGenerationSuccess:
         
         adapter = ElevenLabsAdapter(api_key="test-key")
         custom_voice = "custom-voice-id-12345"
-        adapter.generate_speech("Test script", voice_id=custom_voice)
+        
+        # Mock validate_voice_id to return True for our test voice (Story 3.1)
+        with patch.object(adapter, 'validate_voice_id', return_value=True):
+            adapter.generate_speech("Test script", voice_id=custom_voice)
         
         call_kwargs = mock_client.text_to_speech.convert.call_args.kwargs
         assert call_kwargs.get("voice_id") == custom_voice

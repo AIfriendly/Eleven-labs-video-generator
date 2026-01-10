@@ -777,7 +777,7 @@ class TestZoomAlternation:
         zoom_directions = []
         original_apply_zoom = compiler._apply_zoom_effect
         
-        def tracking_zoom(clip, direction):
+        def tracking_zoom(clip, direction, target_resolution=(1920, 1080)):
             zoom_directions.append(direction)
             return mock_clip
         
@@ -807,7 +807,7 @@ class TestZoomAlternation:
         
         zoom_directions = []
         
-        def tracking_zoom(clip, direction):
+        def tracking_zoom(clip, direction, target_resolution=(1920, 1080)):
             zoom_directions.append(direction)
             return mock_clip
         

@@ -16,7 +16,7 @@ from typing import Callable, List, Optional
 
 from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
 
-from eleven_video.models.domain import Audio, Image, Video
+from eleven_video.models.domain import Audio, Image, Video, Resolution
 from eleven_video.exceptions.custom_errors import ValidationError, VideoProcessingError
 
 
@@ -39,13 +39,18 @@ class FFmpegVideoCompiler:
     # Zoom effect settings (Story 2.7)
     ZOOM_SCALE_FACTOR = 1.08  # 8% zoom (subtle, within 5-10% range)
     
+    # TODO: [Performance] _apply_zoom_effect uses per-frame PIL processing which is slow for HD video.
+    # Future optimization: Replace with direct FFmpeg filter graph (scale+crop) for 100x performance.
+    # Current implementation is "good enough" for MVP but will bottleneck scaling.
+    
     def compile_video(
         self,
         images: List[Image],
         audio: Audio,
         output_path: Path,
         progress_callback: Optional[Callable[[str], None]] = None,
-        enable_zoom: bool = True
+        enable_zoom: bool = True,
+        resolution: Optional[Resolution] = None
     ) -> Video:
         """Compile images and audio into synchronized video.
         
@@ -66,6 +71,10 @@ class FFmpegVideoCompiler:
         # Validation (AC6)
         self._validate_inputs(images, audio)
         
+        # Determine target resolution (Story 3.8)
+        res_enum = resolution or Resolution.HD_1080P
+        target_resolution = (res_enum.value["width"], res_enum.value["height"])
+        
         # Use temporary directory for all temp files (AC6 - cleanup)
         with tempfile.TemporaryDirectory(prefix="eleven_video_") as temp_dir:
             try:
@@ -84,7 +93,8 @@ class FFmpegVideoCompiler:
                     image_paths, 
                     duration_per_image, 
                     progress_callback,
-                    enable_zoom=enable_zoom
+                    enable_zoom=enable_zoom,
+                    target_resolution=target_resolution
                 )
                 
                 # Concatenate and add audio
@@ -118,7 +128,7 @@ class FFmpegVideoCompiler:
                     duration_seconds=audio_duration,
                     file_size_bytes=file_size,
                     codec="h264",
-                    resolution=self.OUTPUT_RESOLUTION
+                    resolution=target_resolution
                 )
                 
             except ValidationError:
@@ -201,7 +211,8 @@ class FFmpegVideoCompiler:
         image_paths: List[str],
         duration_per_image: float,
         progress_callback: Optional[Callable[[str], None]],
-        enable_zoom: bool = True
+        enable_zoom: bool = True,
+        target_resolution: tuple = (1920, 1080)
     ) -> List:
         """Create video clips from images with optional zoom effects.
         
@@ -230,19 +241,19 @@ class FFmpegVideoCompiler:
                     # Apply alternating zoom effects (Story 2.7)
                     # Even indices = zoom in, odd indices = zoom out
                     zoom_direction = "in" if i % 2 == 0 else "out"
-                    clip = self._apply_zoom_effect(clip, zoom_direction)
+                    clip = self._apply_zoom_effect(clip, zoom_direction, target_resolution)
                 else:
                     # No zoom - just resize to output resolution
-                    clip = clip.resized(newsize=self.OUTPUT_RESOLUTION)
+                    clip = clip.resized(newsize=target_resolution)
                 
                 clips.append(clip)
-            except (RuntimeError, ValueError, OSError, TypeError):
+            except Exception as e:
                 # Fallback: static image on any zoom error (AC6)
                 if progress_callback:
                     progress_callback(f"Warning: zoom failed for image {i + 1}, using static")
                 clip = ImageClip(path)
                 clip = clip.with_duration(duration_per_image)
-                clip = clip.resized(newsize=self.OUTPUT_RESOLUTION)
+                clip = clip.resized(newsize=target_resolution)
                 clips.append(clip)
         
         return clips
@@ -250,7 +261,8 @@ class FFmpegVideoCompiler:
     def _apply_zoom_effect(
         self,
         clip: "ImageClip",
-        zoom_direction: str = "in"
+        zoom_direction: str = "in",
+        target_resolution: tuple = (1920, 1080)
     ) -> "ImageClip":
         """Apply Ken Burns-style zoom effect to an image clip.
         
@@ -275,7 +287,7 @@ class FFmpegVideoCompiler:
         else:
             start_scale, end_scale = zoom_factor, 1.0
         
-        w, h = self.OUTPUT_RESOLUTION
+        w, h = target_resolution
         duration = clip.duration
         
         def zoom_effect(get_frame, t):
@@ -312,4 +324,3 @@ class FFmpegVideoCompiler:
         
         # Apply frame-level transformation
         return clip.fl(zoom_effect)
-

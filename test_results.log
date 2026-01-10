@@ -1,11 +1,50 @@
-Python: C:\Users\revenant\AppData\Local\Programs\Python\Python312\python.exe
-CWD: D:\Eleven-labs-AI-Video
+Return code: 0
 
 STDOUT:
+============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-9.0.2, pluggy-1.6.0 -- D:\Eleven-labs-AI-Video\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Eleven-labs-AI-Video
+configfile: pyproject.toml
+plugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0, mock-3.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 7 items
+
+tests/processing/test_ffmpeg_resolution.py::TestFFmpegResolution::test_video_compiler_resolution_variants PASSED [ 14%]
+tests/processing/test_ffmpeg_resolution.py::TestFFmpegResolution::test_ffmpeg_zoom_uses_resolution PASSED [ 28%]
+tests/processing/test_ffmpeg_resolution.py::TestFFmpegResolution::test_default_resolution PASSED [ 42%]
+tests/cli/test_resolution_validation.py::TestResolutionValidation::test_resolution_flag_invalid PASSED [ 57%]
+tests/ui/test_resolution_selector.py::TestResolutionSelector::test_resolution_enum_structure PASSED [ 71%]
+tests/ui/test_resolution_selector.py::TestResolutionSelector::test_selector_interactive_prompt PASSED [ 85%]
+tests/ui/test_resolution_selector.py::TestResolutionSelector::test_selector_fallback_defaults PASSED [100%]
+
+============================== warnings summary ===============================
+tests\processing\test_ffmpeg_resolution.py:34
+  D:\Eleven-labs-AI-Video\tests\processing\test_ffmpeg_resolution.py:34: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\processing\test_ffmpeg_resolution.py:68
+  D:\Eleven-labs-AI-Video\tests\processing\test_ffmpeg_resolution.py:68: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\processing\test_ffmpeg_resolution.py:107
+  D:\Eleven-labs-AI-Video\tests\processing\test_ffmpeg_resolution.py:107: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\ui\test_resolution_selector.py:8
+  D:\Eleven-labs-AI-Video\tests\ui\test_resolution_selector.py:8: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\ui\test_resolution_selector.py:25
+  D:\Eleven-labs-AI-Video\tests\ui\test_resolution_selector.py:25: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests\ui\test_resolution_selector.py:53
+  D:\Eleven-labs-AI-Video\tests\ui\test_resolution_selector.py:53: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 7 passed, 6 warnings in 13.85s ========================
 
 
 STDERR:
-C:\Users\revenant\AppData\Local\Programs\Python\Python312\python.exe: No module named pytest
-
-
-Return code: 1

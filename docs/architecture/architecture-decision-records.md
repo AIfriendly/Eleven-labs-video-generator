@@ -56,3 +56,98 @@
   - *Pros*: Robust user experience, handles API unavailability gracefully
   - *Cons*: Complex implementation
 - **Recommendation**: Option B to meet the 80% success rate requirement and provide professional user experience
+
+---
+
+## ADR-005: Gemini Image Generation API Architecture
+
+**Date**: 2026-01-05  
+**Status**: Accepted  
+**Context**: Investigation revealed fundamental architectural differences between Google's image generation APIs that were not properly addressed in the original implementation.
+
+### Problem Statement
+
+The original image generation implementation had multiple issues:
+1. Hardcoded model IDs that didn't exist or were deprecated
+2. Using `generateContent` for all image models (only works for Gemini, not Imagen)
+3. No handling for empty responses (safety filter blocks)
+4. No retry logic when content is filtered
+
+### Decision
+
+#### 1. Model Categories and API Methods
+
+| Model Type | Example Model IDs | API Method | Config Required |
+|------------|-------------------|------------|-----------------|
+| **Gemini Image** | `gemini-2.5-flash-image` | `generate_content()` | `response_modalities=["IMAGE"]` |
+| **Imagen** | `imagen-4.0-generate-001` | `generate_images()` | Different SDK pattern |
+
+**Decision**: Use Gemini Image models (`gemini-2.5-flash-image`) as primary, since they work with `generate_content()` and have generous free tier (500/day).
+
+#### 2. Model ID Resolution
+
+**Problem**: Model IDs change frequently (models deprecated, renamed, or region-restricted).
+
+**Decision**: 
+- Query available models dynamically via `list_image_models()`
+- Use first available Gemini image model as default
+- Fall back to hardcoded known-working model if query fails
+
+```python
+# Priority order for default model selection:
+1. User-specified via CLI flag (-m)
+2. User's configured default (from setup)
+3. First model from dynamic list_image_models() query
+4. Hardcoded fallback: "gemini-2.5-flash-image"
+```
+
+#### 3. Response Handling
+
+**Problem**: API can return empty responses when safety filters block content.
+
+**Decision**: Implement defensive response parsing:
+```python
+# Check for valid response before accessing parts
+if response.candidates and response.candidates[0].content:
+    parts = response.candidates[0].content.parts
+    # Parse image data...
+else:
+    # Handle empty response (safety filter, etc.)
+    raise GeminiAPIError("Image generation blocked or empty response")
+```
+
+#### 4. Retry Strategy for Blocked Content
+
+**Decision**: When safety filter blocks an image:
+1. Retry with modified prompt (append "safe for work, educational" suffix)
+2. Maximum 2 retries before failing
+3. Log warning about which prompts were filtered
+
+#### 5. Free Tier Optimization
+
+| Model | Free Tier | Paid Cost |
+|-------|-----------|-----------|
+| Gemini 2.5 Flash Image | **500/day** | $0.039/image |
+| Imagen 4 Fast | 100/day | $0.02/image |
+| Imagen 4 Standard | 10-50/day | $0.04/image |
+
+**Decision**: Default to Gemini 2.5 Flash Image for best free tier allowance.
+
+### Consequences
+
+**Positive**:
+- Reliable image generation with proper API usage
+- Dynamic model discovery prevents deprecated model issues
+- Graceful handling of safety filter blocks
+- Optimized for free tier users
+
+**Negative**:
+- Imagen models not supported without additional implementation
+- Requires network call to discover models (cached for performance)
+
+### Implementation Files
+
+- `eleven_video/api/gemini.py` - GeminiAdapter class
+- `eleven_video/ui/image_model_selector.py` - Model selection UI
+- `eleven_video/main.py` - CLI integration
+

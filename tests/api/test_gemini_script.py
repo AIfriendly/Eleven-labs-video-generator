@@ -50,8 +50,8 @@ class TestScriptGenerationSuccess:
         # Verify model parameter in new SDK call
         mock_client.models.generate_content.assert_called_once()
         call_kwargs = mock_client.models.generate_content.call_args
-        assert call_kwargs.kwargs.get('model') == "gemini-2.5-flash" or \
-               (call_kwargs.args and "gemini-2.5-flash" in str(call_kwargs))
+        assert call_kwargs.kwargs.get('model') == "gemini-2.5-flash-lite" or \
+               (call_kwargs.args and "gemini-2.5-flash-lite" in str(call_kwargs))
 
     def test_generate_script_returns_script_model(self, mock_genai):
         """

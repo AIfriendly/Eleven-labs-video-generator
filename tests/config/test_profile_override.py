@@ -28,9 +28,10 @@ class TestGlobalProfileOverride:
         
         from eleven_video.config.settings import Settings
         
-        # Mock the profile functions
+        # Mock the profile functions AND environment variables
         with patch("eleven_video.config.persistence.list_profiles") as mock_list, \
-             patch("eleven_video.config.persistence.get_active_profile") as mock_active:
+             patch("eleven_video.config.persistence.get_active_profile") as mock_active, \
+             patch.dict('os.environ', {}, clear=True):  # Clear real environment variables
             mock_active.return_value = "dev"  # Dev is default
             mock_list.return_value = {"dev": str(env_dev), "prod": str(env_prod)}
             

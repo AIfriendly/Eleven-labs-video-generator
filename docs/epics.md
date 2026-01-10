@@ -92,6 +92,7 @@ FR13: Epic 2 (implemented in Story 2.4)
 FR14: Epic 2 (implemented in Story 2.4)
 FR15: Epic 1
 FR16: Epic 1
+FR16.1: Epic 3
 FR17: Epic 3
 FR18: Epic 3
 FR19: Epic 3
@@ -103,6 +104,9 @@ FR24: Epic 3
 FR24.1: Epic 3
 FR25: Epic 1
 FR25.1: Epic 3
+FR25.2: Epic 3
+FR25.3: Epic 3
+FR25.4: Epic 3
 FR26: Epic 1
 FR27: Epic 1
 FR28: Epic 1
@@ -144,8 +148,8 @@ Users can provide a text prompt and generate a complete video with script, voice
 **FRs covered:** FR1, FR5, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR23, FR30, FR35, FR35.1, FR36, FR42, FR45
 
 ### Epic 3: Pre-generation Customization
-Users can select specific voice models, image generation models, Gemini text generation models, and video duration before starting video generation.
-**FRs covered:** FR2, FR3, FR4, FR17, FR18, FR19, FR24, FR24.1, FR25.1, FR34, FR36.1
+Users can select specific voice models, image generation models, Gemini text generation models, and video duration before starting video generation. **Includes configurable defaults and `--interactive` flag.**
+**FRs covered:** FR2, FR3, FR4, FR16.1, FR17, FR18, FR19, FR24, FR24.1, FR25.1, FR25.2, FR25.3, FR25.4, FR34, FR36.1
 
 ### ~~Epic 4: Video Processing and Timing Control~~ (DISSOLVED)
 > **Note:** Epic 4 has been merged into Epic 2. Stories 4.1-4.4 were already implemented in Story 2.4. Story 4.5 (custom resolution) moved to Epic 3.
@@ -215,6 +219,27 @@ As a user, I want the system to automatically generate matching images from the 
 **Acceptance Criteria:**
 **Given** I have a generated script, **When** the image generation process runs, **Then** images are generated based on thematic keywords extracted from the script sentences using Gemini Nano Banana (`gemini-2.5-flash-image`), **And** the images are of a consistent and appropriate style.
 
+### Story 2.3.1: Image Generation Reliability & API Compliance
+As a user, I want image generation to work reliably with correct API usage and handle errors gracefully, so that video generation succeeds consistently without cryptic API errors.
+
+**Acceptance Criteria:**
+1. **Given** the system calls the Gemini Image API, **When** `generate_content()` is called, **Then** `response_modalities=["IMAGE"]` config is included in the request.
+2. **Given** a model ID is not specified, **When** selecting a default image model, **Then** the system queries available models dynamically and selects the first valid Gemini image model, with `gemini-2.5-flash-image` as hardcoded fallback.
+3. **Given** the API returns an empty response (safety filter), **When** parsing the response, **Then** the system detects the empty response and raises a user-friendly error message instead of crashing with `NoneType` errors.
+4. **Given** content is blocked by safety filters, **When** the first attempt fails, **Then** the system retries up to 2 times with a modified prompt (appending "safe for work, educational" suffix).
+5. **Given** I am using the free tier, **When** generating images, **Then** the default model is `gemini-2.5-flash-image` (500/day free) to maximize free usage.
+
+**Architecture Reference:** ADR-005 (Gemini Image Generation API Architecture)
+
+**Tasks:**
+- [ ] Task 1: Fix `_generate_image_with_retry()` to include `response_modalities=["IMAGE"]` config
+- [ ] Task 2: Add defensive response parsing (check `response.candidates[0].content` before accessing `.parts`)
+- [ ] Task 3: Implement dynamic model discovery fallback chain in `generate_images()`
+- [ ] Task 4: Add retry-with-modified-prompt logic for safety filter blocks
+- [ ] Task 5: Update `list_image_models()` to filter only models that support `generate_content()` (exclude Imagen)
+- [ ] Task 6: Add unit tests for empty response handling and retry logic
+- [ ] Task 7: Add integration test for end-to-end image generation
+
 ### Story 2.4: Video Compilation from Assets
 As a user, I want the system to compile the generated script, audio, and images into a single video file, so that I have a complete video for my original prompt.
 **Acceptance Criteria:**
@@ -277,10 +302,10 @@ As a user, I want to select a target video duration through interactive prompts,
 **Acceptance Criteria:**
 **Given** I am setting up video generation, **When** I select a video duration option (e.g., 1, 3, 5 minutes), **Then** the system generates a script and assets appropriate for that duration.
 
-### Story 3.7: Gemini Model Preference Configuration
-As a user, I want to configure a default Gemini text generation model preference, so that I don't need to select the model each time I generate a video.
+### Story 3.7: Default Preference Configuration
+As a user, I want to configure default preferences for voice, image model, Gemini model, and video duration, so that I don't need to select these options each time I generate a video.
 **Acceptance Criteria:**
-**Given** I have configured a default Gemini model in my settings, **When** I generate a video without specifying a model, **Then** the system uses my default Gemini model.
+**Given** I have configured defaults via `eleven-video setup`, **When** I generate a video without the `--interactive` flag, **Then** the system uses my configured defaults silently. **And Given** I run `eleven-video generate -i`, **When** the `-i` or `--interactive` flag is provided, **Then** the system shows all interactive prompts regardless of configured defaults.
 
 ### Story 3.8: Custom Output Resolution Selection
 As a user, I want to specify output resolution settings for my videos, so that I can match my video resolution to my specific requirements.

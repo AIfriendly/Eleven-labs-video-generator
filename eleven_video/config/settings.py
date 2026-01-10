@@ -11,9 +11,9 @@ Implements Story 1.3: Configuration File Integration
 - Priority: Environment vars > .env file > JSON config > Defaults
 """
 
-from typing import Any, Tuple, Type
+from typing import Any, Optional, Tuple, Type, Literal
 
-from pydantic import SecretStr, ValidationError, model_validator
+from pydantic import SecretStr, ValidationError, model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, PydanticBaseSettingsSource
 
 from eleven_video.exceptions.custom_errors import ConfigurationError
@@ -82,6 +82,34 @@ class _SettingsBase(BaseSettings):
     elevenlabs_api_key: SecretStr
     gemini_api_key: SecretStr
     project_root: str = "."
+    
+    # Story 3.7: Default preference fields (all optional)
+    default_voice: Optional[str] = None
+    default_image_model: Optional[str] = None
+    default_gemini_model: Optional[str] = None
+    default_duration_minutes: Optional[int] = None
+    
+    @field_validator("default_voice", "default_image_model", "default_gemini_model", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, v: Any) -> Optional[str]:
+        """Treat empty strings as None (not configured)."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
+    
+    @field_validator("default_duration_minutes", mode="before")
+    @classmethod
+    def validate_duration_minutes(cls, v: Any) -> Optional[int]:
+        """Validate duration is 3, 5, or 10 minutes if set."""
+        if v is None or v == "":
+            return None
+        try:
+            duration = int(v)
+            if duration not in [3, 5, 10]:
+                return None  # Invalid value, treat as not configured
+            return duration
+        except (ValueError, TypeError):
+            return None  # Invalid type, treat as not configured
 
     @model_validator(mode="after")
     def validate_non_empty_keys(self) -> "_SettingsBase":

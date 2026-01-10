@@ -49,6 +49,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "p0: Critical priority tests - must pass before merge",
+    "p1: High priority tests - important for release quality",
+    "p2: Medium priority tests - edge cases and non-critical scenarios",
+    "p3: Low priority tests - nice-to-have coverage",
 ]
 
 [tool.ruff]

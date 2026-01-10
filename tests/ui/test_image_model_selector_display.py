@@ -38,28 +38,45 @@ class TestImageModelSelectorDisplay:
         
         AC: #1 - Display a numbered list of available image model options.
         """
+        from rich.panel import Panel
+        from rich.table import Table
+        
         # Given: An ImageModelSelector with mock adapter and models
         # When: Displaying model list
         with patch("eleven_video.ui.image_model_selector.console") as mock_console:
             image_model_selector._display_model_list(sample_image_models)
         
-        # Then: Console should have been called with table output
-        assert mock_console.print.called
-        # Console.print called twice: Panel header + Table
+        # Then: Console should have been called with Panel and Table
         assert mock_console.print.call_count >= 2
+        
+        # Verify Panel was printed with correct header
+        call_args = [call[0][0] for call in mock_console.print.call_args_list]
+        panel_calls = [arg for arg in call_args if isinstance(arg, Panel)]
+        assert len(panel_calls) >= 1, "Expected Panel to be printed"
+        
+        # Verify Table was printed
+        table_calls = [arg for arg in call_args if isinstance(arg, Table)]
+        assert len(table_calls) >= 1, "Expected Table to be printed"
 
     def test_image_model_selector_shows_default_option_first(self, image_model_selector, single_image_model):
         """[P1] [3.4-UNIT-003] ImageModelSelector should show default model as option [0].
         
         AC: #4 - Show option to use default model (e.g., "[0] Use default model").
         """
+        from rich.table import Table
+        
         # Given: An ImageModelSelector with models
         # When: Displaying model list
         with patch("eleven_video.ui.image_model_selector.console") as mock_console:
             image_model_selector._display_model_list(single_image_model)
         
-        # Then: First option should be default model (option 0)
+        # Then: Table should include default option as row 0
         assert mock_console.print.call_count >= 2
+        
+        # Verify Table was printed with default model name
+        call_args = [call[0][0] for call in mock_console.print.call_args_list]
+        table_calls = [arg for arg in call_args if isinstance(arg, Table)]
+        assert len(table_calls) >= 1, "Expected Table with default option"
 
 
 # =============================================================================
